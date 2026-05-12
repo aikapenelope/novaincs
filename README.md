@@ -93,6 +93,8 @@ All tiers run on one codebase. Feature flags control access.
 | [05 — Reports, Stack, Features, API](docs/05-REPORTS-STACK-FEATURES-API.md) | Report delivery (email via Resend), stack comparison (Hono vs Encore.ts vs NestJS), complete feature registry (89 features), API readiness, webhook events |
 | [06 — Roadmap & Infrastructure](docs/06-ROADMAP-INFRASTRUCTURE-GROWTH.md) | Product tiers, WhatsApp BSP architecture, Hetzner deployment, roadmap to 1,000 users (4 phases, 12 months), growth assessment |
 | [07 — Voice Input, Minimal Infra, Prefect](docs/07-VOICE-INPUT-MINIMAL-INFRA-PREFECT-BSP.md) | Voice-to-data input, minimal setup for 200 users ($59/mo), Prefect over Temporal, BSP webhook routing, extensibility assessment |
+| [08 — Feature Classification & LLM Costs](docs/08-FEATURE-CLASSIFICATION-LLM-COSTS.md) | All 89 features classified (73 deterministic, 13 LLM, 3 external API), model selection (GPT-5 Mini workhorse, Groq for speed), cost per feature, $0.61/merchant/month total AI cost |
+| [09 — Catalog Edge & Pre-Dev Checklist](docs/09-CATALOG-EDGE-DEPLOYMENT-PREDEV-CHECKLIST.md) | SvelteKit vs Nuxt 3 analysis (stay Nuxt, deploy to Cloudflare Workers), split deployment architecture, complete pre-development checklist (9 decisions, 10 accounts, 7 artifacts, 11 dev tasks, 10 server tasks), 7-day zero-to-code timeline |
 
 ---
 
