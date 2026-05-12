@@ -1,302 +1,171 @@
-# Nova — Definitive Stack: Coolify Deployment, Infrastructure Map & Final Checklist
+# Nova — CORRECTION: Standalone Infrastructure, Not Shared
 
-> **Status**: Planning Phase — FINAL  
+> **Status**: Planning Phase — CORRECTION  
 > **Last Updated**: May 2026  
-> **Scope**: Deployment strategy using existing Coolify infrastructure, complete stack with every component named, and final gap analysis.
+> **Replaces**: Document 11 (which incorrectly placed Nova on the existing platform-infra)
 
 ---
 
-## 1. Deployment: Coolify on Your Existing Infrastructure
+## The Correction
 
-Nova doesn't need a new server. It deploys on your existing 3-plane Hetzner architecture via Coolify, exactly like Aurora, Docflow, and Whabi.
+Document 11 was wrong. It placed Nova on the existing 3-plane Hetzner architecture (Control Plane, Data Plane, App Plane A) shared with Whabi, Docflow, and Aurora. That contradicts the core design principle: **Nova is a composable, standalone product with its own infrastructure.** It does not share servers, databases, or deployment pipelines with the other projects.
 
-### 1.1 Where Nova Runs
-
-```
-EXISTING INFRASTRUCTURE (already running)
-──────────────────────────────────────────
-
-Control Plane (CX23, 10.0.1.10)
-├── Coolify (manages all deployments)
-├── Traefik (reverse proxy, SSL)
-└── Tailscale (VPN access)
-
-Data Plane (CX33, 10.0.1.20)
-├── PostgreSQL 16 + pgvector (DB: nova — already created)
-├── PgBouncer (port 6432 — NOT used by Nova due to RLS)
-├── Redis 7 (DB 4 — already assigned to Nova)
-├── MinIO (bucket: nova-receipts — already created)
-└── Daily backups (cron, 7-day retention)
-
-App Plane A (CX33, 10.0.1.30)
-├── Whabi containers
-├── Docflow containers
-├── Aurora containers
-└── Nova containers ← NEW (deployed via Coolify)
-
-CLOUDFLARE (new, for catalog only)
-──────────────────────────────────
-├── Nova Catalog PWA (Nuxt 3 on Workers)
-└── DNS + CDN for static assets
-```
-
-### 1.2 How Coolify Deploys Nova
-
-Coolify on the Control Plane (10.0.1.10) manages containers on App Plane A (10.0.1.30) remotely via Docker API over the private network. The deployment flow:
-
-```
-1. Developer pushes to GitHub (main branch)
-2. Coolify detects the push (webhook)
-3. Coolify builds the Docker image on App Plane A
-4. Coolify starts/restarts the container on App Plane A
-5. Traefik on Control Plane routes traffic to the container
-```
-
-No CI/CD pipeline to build. No Docker registry to manage. No SSH deploy scripts. Coolify handles it all — same as your other projects.
-
-### 1.3 Nova's Containers on App Plane A
-
-Nova needs **2 containers** on App Plane A (not 5, not 10):
-
-| Container | What It Does | Port | Memory |
-|---|---|---|---|
-| **nova-app** | Hono API + BullMQ workers + Agno agents (one Node.js process) | 3000 | ~1.5 GB |
-| **nova-dashboard** | Nuxt 3 SSR (merchant PWA) | 3001 | ~512 MB |
-
-That's it. PostgreSQL, Redis, and MinIO already run on the Data Plane. The catalog PWA runs on Cloudflare Workers. No Caddy/Traefik needed — Coolify's Traefik on the Control Plane handles SSL and routing.
-
-**Total additional memory on App Plane A: ~2 GB.** The CX33 has 8 GB RAM. With Whabi, Docflow, and Aurora already running, there's capacity for Nova. If it gets tight, enable App Plane B (already defined in your Pulumi config with `appPlaneBEnabled`).
-
-### 1.4 Coolify Configuration for Nova
-
-In Coolify's dashboard, create two new services:
-
-**Service 1: nova-app**
-- Source: GitHub repo `aikapenelope/novaincs`, path `apps/api`
-- Build: Dockerfile
-- Port: 3000
-- Domain: `api.nova.app` (or subdomain of your choice)
-- Environment variables (from ESC `platform-infra/nova`):
-  ```
-  DATABASE_URL=postgresql://platform:***@10.0.1.20:5432/nova
-  REDIS_URL=redis://:***@10.0.1.20:6379/4
-  MINIO_ENDPOINT=http://10.0.1.20:9000
-  MINIO_BUCKET=nova-receipts
-  MINIO_ACCESS_KEY=***
-  MINIO_SECRET_KEY=***
-  CLERK_SECRET_KEY=***
-  OPENAI_API_KEY=***
-  GROQ_API_KEY=***
-  PHOTOROOM_API_KEY=***
-  RESEND_API_KEY=***
-  ```
-
-**Service 2: nova-dashboard**
-- Source: GitHub repo `aikapenelope/novaincs`, path `apps/dashboard`
-- Build: Dockerfile
-- Port: 3001
-- Domain: `app.nova.app`
-- Environment variables: `NUXT_PUBLIC_API_URL=https://api.nova.app`
-
-**Catalog (separate, not in Coolify)**:
-- Deployed to Cloudflare Workers via `wrangler deploy` in GitHub Actions
-- Domain: `*.nova.app` (wildcard for merchant catalogs) or custom domains
+The existing platform-infra already has `nova.ts` with connection strings pointing to the shared Data Plane. That file was created as a placeholder. **Nova will NOT use those shared resources for production.** Nova gets its own server, its own PostgreSQL, its own Redis, its own MinIO.
 
 ---
 
-## 2. Complete Stack: Every Component Named
+## 1. Why Standalone
 
-### 2.1 The Full Picture
+- **Nova is a multi-tenant SaaS** serving hundreds/thousands of external merchants. Whabi, Docflow, and Aurora are single-tenant internal tools. Different risk profile.
+- **A bug in Nova should never affect Docflow's patient records** or Whabi's CRM data. Resource isolation prevents cascading failures.
+- **Nova scales independently.** When Nova hits 1,000 merchants, it needs more resources. That shouldn't require resizing the server that runs Docflow.
+- **Composable architecture means each product owns its infrastructure.** That's the whole point.
 
-```
-LAYER 1: BUYER INTERFACE
-├── Nuxt 3 (Cloudflare Workers) — catalog PWA
-├── @vite-pwa/nuxt — offline support, installable
-├── Tailwind CSS 4 — styling
-├── Shadcn-vue — UI components
-└── Cloudflare CDN — static assets (images, CSS, JS)
+---
 
-LAYER 2: MERCHANT INTERFACE
-├── Nuxt 3 (Hetzner via Coolify) — dashboard PWA
-├── @vite-pwa/nuxt — offline support, installable
-├── Tailwind CSS 4 — styling
-├── Shadcn-vue — UI components (shared with catalog via monorepo)
-└── Traefik (Coolify) — SSL, routing
+## 2. Nova's Infrastructure
 
-LAYER 3: API
-├── Hono 4.x — HTTP framework (14kb)
-├── Drizzle ORM — database access (7.4kb, SQL-first)
-├── Clerk SDK — authentication middleware
-├── BullMQ — background job queue (image processing, events, reports)
-├── Zod — request/response validation
-└── Hetzner via Coolify — deployment
+### One Server: Hetzner CX32
 
-LAYER 4: AI AGENTS
-├── Agno AgentOS — agent framework + runtime + observability
-├── OpenAI GPT-5 Mini — workhorse LLM ($0.25/1M input tokens)
-├── Groq Llama 4 Scout — fast/cheap tasks ($0.11/1M input tokens)
-├── Groq Whisper — voice transcription
-├── Photoroom API — image enhancement ($0.02/image)
-└── MCP Protocol — tool integration standard
-
-LAYER 5: DATA
-├── PostgreSQL 16 + pgvector — primary database (10.0.1.20:5432/nova)
-├── Redis 7 — cache + BullMQ queues (10.0.1.20:6379/4)
-├── MinIO — object storage for images (10.0.1.20:9000/nova-receipts)
-└── Hetzner Data Plane — hosting
-
-LAYER 6: SCHEDULED JOBS
-├── Prefect 3 — workflow orchestration (runs on App Plane A)
-│   ├── RFM score calculation (hourly)
-│   ├── Daily briefing generation (daily 8am)
-│   ├── Weekly email summary (Monday 8am)
-│   ├── Monthly PDF report (1st of month)
-│   └── Exchange rate check (every 15 min)
-└── BullMQ cron — lightweight recurring tasks
-    ├── Event processing (every 5 seconds)
-    ├── Cache invalidation (on stock change)
-    └── Subscription expiry check (daily)
-
-LAYER 7: EXTERNAL SERVICES
-├── Clerk — authentication (phone + Google login)
-├── Resend — transactional email (reports, notifications)
-├── Cloudflare — DNS, CDN, Workers
-├── Google Sheets API — import via service account
-└── Meta WhatsApp Cloud API — Phase 3 (broadcasts, chatbot)
-
-LAYER 8: INFRASTRUCTURE
-├── Hetzner Cloud — 3-plane architecture (existing)
-├── Coolify — deployment management (existing)
-├── Traefik — reverse proxy + SSL (existing)
-├── Tailscale — VPN access (existing)
-├── Pulumi — infrastructure as code (existing)
-└── ESC — secrets management (existing)
-
-LAYER 9: DEVELOPMENT
-├── pnpm workspaces — monorepo management
-├── Turborepo — build orchestration
-├── TypeScript — language (everywhere except Agno agents)
-├── Python 3.12 — Agno agents + Prefect flows
-├── Vitest — unit/integration tests
-├── Playwright — E2E tests
-├── ESLint + Prettier — linting/formatting
-├── GitHub Actions — CI (lint, typecheck, test)
-└── Coolify webhooks — CD (auto-deploy on push to main)
-```
-
-### 2.2 What's New vs What Already Exists
-
-| Component | Status | Notes |
+| Component | Spec | Cost |
 |---|---|---|
-| Hetzner 3-plane architecture | **Exists** | No changes needed |
-| Coolify | **Exists** | Add 2 new services for Nova |
-| Traefik | **Exists** | Add routing rules for nova domains |
-| Tailscale | **Exists** | No changes |
-| PostgreSQL 16 + pgvector | **Exists** | DB `nova` already created by init-databases.sh |
-| Redis 7 | **Exists** | DB 4 already assigned to Nova |
-| MinIO | **Exists** | Bucket `nova-receipts` needs creation via init-minio-buckets.sh |
-| PgBouncer | **Exists** | NOT used by Nova (RLS needs direct connection) |
-| Pulumi IaC | **Exists** | nova.ts already defines connection strings |
-| ESC secrets | **Exists** | Need to create `platform-infra/nova` environment |
-| Cloudflare account | **New** | For catalog Workers + DNS |
-| Clerk project | **New** | Auth for Nova |
-| Resend account | **New** | Email delivery |
-| OpenAI API key | **New** | LLM for agents |
-| Groq API key | **New** | Voice + fast inference |
-| Photoroom API key | **New** | Image enhancement |
-| Google Cloud service account | **New** | Google Sheets import |
-| Nova application code | **New** | The actual product |
+| **Hetzner CX32** | 4 vCPU, 8 GB RAM, 80 GB NVMe | $8.49/mo |
+| **Backups** | Automated (20% of server cost) | $1.70/mo |
+| **Block Storage** | 50 GB (product images, imports) | $2.60/mo |
+| **Total** | | **$12.79/mo** |
 
-### 2.3 MinIO Bucket Update
+Location: Ashburn (ash) — lowest latency to Venezuela (~60ms).
 
-The existing `init-minio-buckets.sh` on the Data Plane needs one addition. The bucket `nova-receipts` is defined in `nova.ts` but not yet in the init script. Add:
+### What Runs on It
 
-```bash
-docker run --rm --network data-plane minio/mc mb --ignore-existing local/nova-receipts
-docker run --rm --network data-plane minio/mc mb --ignore-existing local/nova-products  # product images
-docker run --rm --network data-plane minio/mc mb --ignore-existing local/nova-imports   # uploaded files for import
+**5 containers**, managed by Coolify (a separate Coolify instance on this server, or Docker Compose directly):
+
+```
+Nova CX32 (Ashburn)
+├── nova-app          (Hono API + BullMQ workers + Agno agents)  ~2.5 GB
+├── nova-dashboard    (Nuxt 3 SSR, merchant PWA)                 ~512 MB
+├── postgres          (PostgreSQL 16 + pgvector, DB: nova)        ~2 GB
+├── redis             (Redis 7, cache + queues)                   ~512 MB
+└── caddy             (reverse proxy, auto-SSL)                   ~128 MB
+                                                          Total: ~5.6 GB / 8 GB
+```
+
+MinIO is NOT a separate container. Product images and uploads go to **Cloudflare R2** (S3-compatible, $0.015/GB/mo, free egress) or to the block storage volume served directly by Caddy. This saves ~512 MB of RAM and simplifies the stack.
+
+### Deployment: Coolify or Docker Compose?
+
+**Option A: Coolify on the same server (recommended)**
+
+Install Coolify on the CX32 itself. It's lightweight (~300 MB RAM). You get:
+- Git-based auto-deploy (push to main → Coolify builds and restarts)
+- SSL via built-in Traefik
+- Environment variable management
+- Container monitoring dashboard
+- Same workflow you already know from platform-infra
+
+This is the simplest path. One server, Coolify manages everything on it.
+
+**Option B: Docker Compose + GitHub Actions**
+
+If you don't want Coolify overhead on the same server:
+- Docker Compose manages the containers
+- Caddy handles SSL (auto Let's Encrypt)
+- GitHub Actions builds Docker images, pushes to GitHub Container Registry, SSHs into the server, pulls and restarts
+- No web dashboard for container management (CLI only)
+
+**Recommendation: Option A (Coolify).** The 300 MB overhead is worth the deployment convenience. You already know Coolify. Don't introduce a new deployment workflow for Nova.
+
+### Catalog: Cloudflare Workers (Unchanged)
+
+The buyer-facing catalog PWA deploys to Cloudflare Workers. This is separate from the Hetzner server. The Worker fetches data from the Nova API on Hetzner via HTTP.
+
+```
+Buyer → Cloudflare Worker (edge, ~30ms) → Nova API (Hetzner Ashburn) → PostgreSQL
 ```
 
 ---
 
-## 3. What's Missing: Final Gap Analysis
+## 3. Complete Stack (Corrected)
 
-### 3.1 Nothing Is Missing for Planning
+```
+NOVA INFRASTRUCTURE (standalone, NOT shared with platform-infra)
+═══════════════════════════════════════════════════════════════
 
-The 10 documents cover:
+Hetzner CX32 (Ashburn, $12.79/mo)
+├── Coolify (deployment management + Traefik for SSL)
+├── nova-app container
+│   ├── Hono 4.x (API framework)
+│   ├── Drizzle ORM (PostgreSQL access)
+│   ├── BullMQ workers (background jobs)
+│   ├── Agno AgentOS (AI agents)
+│   ├── Prefect worker (scheduled flows)
+│   └── Clerk SDK (auth middleware)
+├── nova-dashboard container
+│   ├── Nuxt 3 (SSR)
+│   ├── Tailwind CSS 4
+│   ├── Shadcn-vue
+│   └── @vite-pwa/nuxt
+├── PostgreSQL 16 + pgvector container
+│   ├── DB: nova (single database, multi-tenant via RLS)
+│   └── Extensions: vector, uuid-ossp
+├── Redis 7 container
+│   ├── Cache (sessions, hot data)
+│   └── BullMQ queues (jobs)
+└── Caddy container (if not using Coolify's Traefik)
 
-| Area | Document | Status |
-|---|---|---|
-| Market, competition, positioning | 01 | Complete |
-| CRM value, data ingestion, multi-tenant | 02 | Complete |
-| Customer identity, DB sizing, Wakit, MCP | 03 | Complete |
-| Checkout flow, dashboard UX, agent data | 04 | Complete |
-| Reports, stack comparison, 89 features, API | 05 | Complete |
-| Roadmap, tiers, infrastructure, growth | 06 | Complete |
-| Voice input, minimal infra, Prefect, BSP | 07 | Complete |
-| Feature classification, LLM costs | 08 | Complete |
-| Catalog edge deployment, pre-dev checklist | 09 | Complete |
-| Workers architecture, billing, observability | 10 | Complete |
-| Deployment on existing infra, full stack | 11 (this doc) | Complete |
+Cloudflare (free-$5/mo)
+├── Workers: nova-catalog (Nuxt 3 SSR at edge)
+├── DNS: nova.app (or chosen domain)
+└── CDN: static assets
 
-### 3.2 What Remains Before Coding
+External Services (~$46/mo for 200 users)
+├── Clerk: auth (free tier)
+├── Resend: email (free tier)
+├── OpenAI: GPT-5 Mini ($3/mo)
+├── Groq: Whisper + Llama ($2/mo)
+├── Photoroom: images ($40/mo)
+├── Google Cloud: Sheets API service account (free)
+└── Cloudflare R2: image storage ($0.015/GB/mo, ~$1/mo)
 
-Only execution tasks remain. No more planning needed.
+TOTAL: ~$59/mo for 200 users
+```
 
-**Day 1 — Accounts & Decisions (4 hours)**:
-- [ ] Decide product name and domain
-- [ ] Create Cloudflare account, add domain
-- [ ] Create Clerk project (phone auth + Google)
-- [ ] Create Resend account, verify domain
-- [ ] Get OpenAI API key
-- [ ] Get Groq API key
-- [ ] Get Photoroom API key
-- [ ] Create Google Cloud service account for Sheets API
-- [ ] Create ESC environment `platform-infra/nova` with all secrets
+---
 
-**Day 2 — Monorepo & Scaffolding (6 hours)**:
-- [ ] Initialize pnpm workspace + turborepo in novaincs repo
-- [ ] Scaffold `apps/api` (Hono + Drizzle + BullMQ)
-- [ ] Scaffold `apps/dashboard` (Nuxt 3 + Tailwind + Shadcn-vue + PWA)
-- [ ] Scaffold `apps/catalog` (Nuxt 3 + Cloudflare Workers preset)
-- [ ] Scaffold `packages/shared` (TypeScript types)
-- [ ] Scaffold `packages/ui` (shared Vue components)
-- [ ] Configure ESLint + Prettier for monorepo
-- [ ] Configure Vitest
+## 4. What About the Existing platform-infra/nova.ts?
 
-**Day 3 — Database & Auth (8 hours)**:
-- [ ] Write Drizzle schema (all MVP tables with RLS)
-- [ ] Run migrations against `nova` database on Data Plane
-- [ ] Integrate Clerk auth middleware in Hono
-- [ ] Implement tenant context extraction + RLS session variable
-- [ ] Write RLS security tests
+The `nova.ts` file in platform-infra defines connection strings to the shared Data Plane. For Nova's standalone deployment, this file is **not used**. Nova has its own PostgreSQL on its own server.
 
-**Day 4 — Deployment Pipeline (4 hours)**:
-- [ ] Create Dockerfiles for `nova-app` and `nova-dashboard`
-- [ ] Configure Coolify services (2 containers on App Plane A)
-- [ ] Configure Cloudflare Workers deployment for catalog
-- [ ] Set up GitHub Actions for CI (lint + typecheck + test)
-- [ ] First deploy test: verify all containers start and connect to Data Plane
+If in the future Nova needs to share data with Aurora or Docflow (e.g., a merchant uses both), that would be done via API calls between the systems, not by sharing a database. Each product owns its data.
 
-**Day 5 — Start MVP Coding**:
-- [ ] Product CRUD + image upload to MinIO
-- [ ] Photoroom API integration
-- [ ] Begin catalog PWA (product listing, detail page)
+---
 
-**Total: 4 days of setup, then coding starts on day 5.**
+## 5. Updated Pre-Coding Checklist
 
-### 3.3 Confirmed: Nothing Else Is Missing
+| Day | Task |
+|---|---|
+| **1** | Founder decisions (name, domain). Create accounts (Cloudflare, Clerk, Resend, OpenAI, Groq, Photoroom, Google Cloud). |
+| **2** | Provision Hetzner CX32 in Ashburn. Install Coolify. Configure domain + DNS in Cloudflare. Attach 50 GB block storage. |
+| **3** | Initialize monorepo (pnpm + turborepo). Scaffold apps (api, dashboard, catalog) + packages (shared, ui). Configure linting. |
+| **4** | Write Drizzle schema. Run migrations on Nova's PostgreSQL. Integrate Clerk auth. Write RLS tests. |
+| **5** | Configure Coolify services (nova-app, nova-dashboard). Deploy catalog to Cloudflare Workers. First end-to-end test. |
+| **6** | Start MVP coding: Product CRUD + image upload + Photoroom integration. |
 
-The system is fully defined:
-- **89 features** classified by type (73 deterministic, 13 LLM, 3 external API)
-- **3 product tiers** (Starter $8, Pro $15, Business $25) from one codebase
-- **Deployment** on existing Coolify infrastructure (2 new containers)
-- **Catalog** on Cloudflare Workers (edge SSR, free-$5/mo)
-- **Billing** via Pago Movil/Zelle (no Stripe)
-- **Observability** via AgentOS built-in + UptimeRobot
-- **LLM costs** at $0.61/merchant/month (GPT-5 Mini + Groq + Photoroom)
-- **Infrastructure cost** at $0/month additional (uses existing Hetzner planes)
-- **External services** at ~$46/month for 200 users
-- **Roadmap** from zero to 1,000 users in 12 months
+---
 
-The planning phase is complete. The next step is execution.
+## 6. Final Confirmation: Nothing Missing
+
+| Category | Status |
+|---|---|
+| Product vision (11 docs) | Complete |
+| 89 features classified | Complete |
+| 3 product tiers | Complete |
+| LLM model selection + costs | Complete |
+| Standalone infrastructure | **Corrected in this document** |
+| Deployment via Coolify | Complete |
+| Catalog on Cloudflare Workers | Complete |
+| Billing via Pago Movil/Zelle | Complete |
+| Observability via AgentOS | Complete |
+| Pre-coding checklist | Complete |
+
+The planning phase is complete. Nova has its own infrastructure, its own deployment, and its own scaling path — independent of the existing platform.
