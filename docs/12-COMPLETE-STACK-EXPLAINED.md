@@ -1,355 +1,541 @@
-# Nova — Complete Stack Explained: Every Component, Why It's There, and How It Connects
+# Nova — Production Architecture: Proper Service Isolation
 
-> **Status**: Planning Phase — DEFINITIVE REFERENCE  
-> **Last Updated**: May 2026
-
----
-
-## 1. Deployment: Dokploy, Not Coolify
-
-Coolify uses 500-700 MB RAM idle + 5-6% CPU before you deploy anything. On an 8 GB server where Nova needs ~5.6 GB for its own services, that leaves dangerously thin margins.
-
-**Dokploy** uses 350 MB RAM idle + 0.8% CPU. It saves ~350 MB of RAM and 5% CPU compared to Coolify. Same core features: git-based auto-deploy, Docker Compose native support, Traefik for SSL/routing, web dashboard for management.
-
-| Metric | Coolify | Dokploy | Winner |
-|---|---|---|---|
-| Idle RAM | 500-700 MB | ~350 MB | Dokploy |
-| Idle CPU | 5-6% | 0.8% | Dokploy |
-| Containers at idle | 6-8 | 3-4 | Dokploy |
-| Docker Compose support | Yes | Yes (native) | Tie |
-| Git auto-deploy | Yes | Yes | Tie |
-| SSL (Let's Encrypt) | Yes (Traefik) | Yes (Traefik) | Tie |
-| Web dashboard | Polished | Clean, functional | Coolify (nicer UI) |
-| One-click apps | 280+ | Fewer | Coolify |
-| Multi-server | Yes | Yes (Docker Swarm) | Tie |
-| GitHub stars | ~35K | ~26K | Coolify |
-| License | Open source | Open source | Tie |
-
-**Dokploy wins for Nova** because every MB of RAM matters on a single CX32. You already know Coolify from platform-infra, but Dokploy's workflow is nearly identical: connect GitHub repo, configure environment variables, push to main, auto-deploy. The learning curve is minimal.
+> **Status**: Planning Phase — REPLACES doc 12  
+> **Last Updated**: May 2026  
+> **Principle**: Robustness and stability over speed or resource savings.
 
 ---
 
-## 2. The Complete Stack: Layer by Layer
+## 1. The Problem with the Previous Design
 
-### Layer 1 — Hardware
+Doc 12 mixed concerns inside containers to save RAM. That's a development shortcut, not a production architecture. Specifically:
 
-```
-Hetzner CX32 (Ashburn, Virginia)
-├── 4 vCPU (shared AMD EPYC)
-├── 8 GB RAM
-├── 80 GB NVMe SSD
-├── 20 TB bandwidth included
-├── $8.49/month
-└── + 50 GB Block Storage ($2.60/mo) mounted at /mnt/storage
-```
+- **nova-app** was running Hono API + BullMQ workers + Agno agents in one Node.js process. If a BullMQ worker crashes processing an image, it takes down the API.
+- **Agno and Prefect were sharing Nova's PostgreSQL.** Agno stores memories, sessions, traces, and knowledge. Prefect stores flow runs, task states, and schedules. Mixing that with Nova's business data (products, orders, customers) in one database creates coupling and makes debugging, backups, and migrations harder.
+- **Prefect wasn't even a separate container.** It was mentioned as running "inside nova-app." That's not how Prefect works in production.
 
-**Why Ashburn**: ~60ms to Caracas. Helsinki would be ~150ms. The catalog runs on Cloudflare edge anyway, but the API and dashboard benefit from lower latency to Venezuela.
+This document corrects all of that. Each service gets its own container. Each stateful service gets its own database. If one service crashes, the others keep running.
 
-**Why CX32 not CX22**: The CX22 (2 vCPU, 4 GB) is too tight. PostgreSQL alone wants 2 GB for decent performance. CX32 gives breathing room. Upgrade to CX42 (8 vCPU, 16 GB, $16.49/mo) when you hit 500+ merchants.
+---
 
-### Layer 2 — Operating System & Deployment
+## 2. Production Container Architecture
+
+### 8 Containers, Properly Isolated
 
 ```
-Ubuntu 24.04 LTS
-├── Docker Engine (containers)
-├── Dokploy (deployment management + Traefik)
-├── fail2ban (brute-force protection)
-├── unattended-upgrades (auto security patches)
-├── UFW firewall (ports 80, 443, 22 only)
-└── 2 GB swap file (safety net for memory spikes)
+┌─────────────────────────────────────────────────────────────┐
+│                    Hetzner CX42                              │
+│              8 vCPU, 16 GB RAM, 160 GB NVMe                 │
+│                    Ashburn (ash)                              │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                   │
+│  │  nova-api       │  │  nova-dashboard  │                   │
+│  │  (Hono + BullMQ │  │  (Nuxt 3 SSR)   │                   │
+│  │   workers)      │  │                  │                   │
+│  │  Port: 3000     │  │  Port: 3001      │                   │
+│  │  ~1 GB          │  │  ~512 MB         │                   │
+│  └────────┬────────┘  └────────┬─────────┘                   │
+│           │                    │                              │
+│  ┌────────┴────────┐  ┌───────┴──────────┐                   │
+│  │  nova-agents    │  │  prefect-server   │                   │
+│  │  (Agno AgentOS) │  │  + prefect-worker │                   │
+│  │  Python 3.12    │  │  Python 3.12      │                   │
+│  │  Port: 8000     │  │  Port: 4200       │                   │
+│  │  ~1 GB          │  │  ~512 MB          │                   │
+│  └────────┬────────┘  └───────┬──────────┘                   │
+│           │                    │                              │
+│  ┌────────┴────────────────────┴──────────┐                   │
+│  │              DATABASES                  │                   │
+│  │                                         │                   │
+│  │  ┌─────────────┐  ┌─────────────┐      │                   │
+│  │  │ pg-nova     │  │ pg-agno     │      │                   │
+│  │  │ Port: 5432  │  │ Port: 5433  │      │                   │
+│  │  │ ~2 GB       │  │ ~512 MB     │      │                   │
+│  │  │ Business    │  │ Agent       │      │                   │
+│  │  │ data + RLS  │  │ memories,   │      │                   │
+│  │  │             │  │ sessions,   │      │                   │
+│  │  │             │  │ traces      │      │                   │
+│  │  └─────────────┘  └─────────────┘      │                   │
+│  │                                         │                   │
+│  │  ┌─────────────┐                        │                   │
+│  │  │ pg-prefect  │                        │                   │
+│  │  │ Port: 5434  │                        │                   │
+│  │  │ ~256 MB     │                        │                   │
+│  │  │ Flow runs,  │                        │                   │
+│  │  │ schedules,  │                        │                   │
+│  │  │ task states │                        │                   │
+│  │  └─────────────┘                        │                   │
+│  └─────────────────────────────────────────┘                   │
+│                                                              │
+│  ┌─────────────────┐                                         │
+│  │  redis          │                                         │
+│  │  Port: 6379     │                                         │
+│  │  ~512 MB        │                                         │
+│  │  Cache + BullMQ │                                         │
+│  │  + Prefect msgs │                                         │
+│  └─────────────────┘                                         │
+│                                                              │
+│  ┌─────────────────┐                                         │
+│  │  Dokploy        │                                         │
+│  │  + Traefik      │                                         │
+│  │  ~350 MB        │                                         │
+│  └─────────────────┘                                         │
+│                                                              │
+│  Total: ~6.6 GB used / 16 GB available                       │
+│  Free: ~9.4 GB (headroom for spikes + OS)                    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Dokploy installs with one command**: `curl -sSL https://dokploy.com/install.sh | sh`
+### Why CX42 Instead of CX32
 
-It sets up Docker, Traefik, and the Dokploy dashboard. After install, you access the dashboard at `https://your-ip:3000`, connect your GitHub repo, and deploy.
+The CX32 (8 GB) was tight with everything crammed into one process. With proper isolation (8 containers, 3 PostgreSQL instances), 8 GB is not enough. The CX42 costs $16.49/month (vs $8.49) and gives:
 
-### Layer 3 — Containers (What Actually Runs)
+| Spec | CX32 | CX42 |
+|---|---|---|
+| vCPU | 4 | 8 |
+| RAM | 8 GB | 16 GB |
+| NVMe | 80 GB | 160 GB |
+| Price | $8.49/mo | $16.49/mo |
+
+The extra $8/month buys proper isolation, headroom for traffic spikes, and room to grow to 500+ merchants without upgrading. At $15/merchant average revenue, you need 2 paying merchants to cover the entire server.
+
+---
+
+## 3. Each Service Explained
+
+### Container 1: nova-api
 
 ```
-CONTAINER 1: nova-app (Hono API + BullMQ + Agno)
-├── Runtime: Node.js 22 LTS
-├── Framework: Hono 4.x (HTTP routing, middleware, CORS, rate limiting)
-├── ORM: Drizzle (SQL queries, migrations, type inference)
-├── Auth: Clerk SDK (JWT verification, tenant extraction)
-├── Queue: BullMQ (background jobs, runs in same process)
-├── Agents: Agno SDK (Python subprocess or HTTP call to agent service)
-├── Validation: Zod (request/response schemas)
-├── Memory: ~1.5-2 GB
-├── Port: 3000
-└── Connects to: PostgreSQL (5432), Redis (6379)
+Image: node:22-alpine + custom build
+Port: 3000
+RAM: ~1 GB
+Connects to: pg-nova (5432), redis (6379), nova-agents (8000)
 
-CONTAINER 2: nova-dashboard (Merchant PWA)
-├── Runtime: Node.js 22 LTS
-├── Framework: Nuxt 3 (SSR + PWA)
-├── UI: Shadcn-vue + Tailwind CSS 4
-├── PWA: @vite-pwa/nuxt (offline, installable)
-├── Memory: ~512 MB
-├── Port: 3001
-└── Connects to: nova-app API (HTTP, port 3000)
+What it does:
+├── Hono HTTP server (API endpoints)
+├── Clerk auth middleware (JWT verification, tenant context)
+├── Drizzle ORM (queries to pg-nova)
+├── BullMQ workers (in same process, separate threads):
+│   ├── image-processor (calls Photoroom API)
+│   ├── event-processor (behavioral events from Redis Streams)
+│   ├── payment-verifier (calls nova-agents for OCR)
+│   └── report-generator (calls Resend for email)
+└── Zod validation (request/response schemas)
 
-CONTAINER 3: postgres
+Why BullMQ stays here (not separate container):
+BullMQ workers are lightweight Node.js event handlers. They share the
+same Redis connection and the same Drizzle ORM instance as the API.
+Separating them would mean duplicating the DB connection pool and
+adding inter-container HTTP calls for no benefit. BullMQ is designed
+to run in-process. If a worker fails, BullMQ retries the job
+automatically — it doesn't crash the API process.
+```
+
+### Container 2: nova-dashboard
+
+```
+Image: node:22-alpine + Nuxt 3 build
+Port: 3001
+RAM: ~512 MB
+Connects to: nova-api (3000) via HTTP
+
+What it does:
+├── Nuxt 3 SSR (server-side rendering)
+├── Tailwind CSS 4 + Shadcn-vue (UI)
+├── @vite-pwa/nuxt (offline, installable)
+└── Fetches all data from nova-api (never touches DB directly)
+
+Why it's separate from nova-api:
+The dashboard is a frontend app. It should never have direct DB access.
+If the dashboard crashes (bad Vue component, memory leak), the API
+keeps serving the catalog and processing orders.
+```
+
+### Container 3: nova-agents (Agno AgentOS)
+
+```
+Image: python:3.12-slim + Agno SDK
+Port: 8000
+RAM: ~1 GB
+Connects to: pg-agno (5433), pg-nova (5432 read-only), redis (6379)
+
+What it does:
+├── Agno AgentOS runtime (FastAPI with 50+ endpoints)
+├── Sales Agent
+├── Finance Agent
+├── Content Agent
+├── Support Agent
+├── Migration Agent (MCP-based)
+├── MCP Server (Nova's proprietary tools)
+└── OpenTelemetry tracing (built-in)
+
+Database: pg-agno (SEPARATE from pg-nova)
+├── agent_sessions (conversation history per tenant)
+├── agent_memories (long-term memory per tenant)
+├── agent_runs (execution logs, traces)
+└── knowledge_vectors (pgvector embeddings for RAG)
+
+Why separate database:
+Agno's docs explicitly show a separate PostgreSQL instance. Agent
+memories and traces are high-write, append-only data that grows
+fast. Mixing it with business data would bloat pg-nova's WAL,
+slow down backups, and make it harder to debug agent issues
+independently of business logic issues.
+
+How it reads Nova's business data:
+nova-agents connects to pg-nova as a READ-ONLY user. It can query
+products, customers, orders, inventory — but cannot write to them.
+All writes go through nova-api. This prevents agents from
+accidentally corrupting business data.
+```
+
+### Container 4: prefect-server + prefect-worker
+
+```
+Image: prefecthq/prefect:3-latest
+Port: 4200 (UI, optional)
+RAM: ~512 MB
+Connects to: pg-prefect (5434), redis (6379), nova-api (3000)
+
+What it does:
+├── Prefect Server (orchestration engine)
+├── Prefect Services (background scheduler)
+├── Prefect Worker (executes flows)
+└── Scheduled flows:
+    ├── rfm_scoring (hourly) — calls nova-api to trigger RFM recalculation
+    ├── daily_briefing (daily 8am) — calls nova-agents to generate briefing
+    ├── weekly_summary (Monday 8am) — calls nova-api for data, Resend for email
+    ├── monthly_report (1st of month) — calls nova-api + nova-agents + Resend
+    ├── exchange_rate_check (every 15 min) — HTTP fetch + calls nova-api to update
+    └── subscription_expiry (daily) — calls nova-api to check/downgrade expired plans
+
+Database: pg-prefect (SEPARATE from pg-nova and pg-agno)
+├── flow_runs (execution history)
+├── task_runs (individual task results)
+├── deployments (flow configurations)
+└── schedules (cron definitions)
+
+Why separate database:
+Prefect's official Docker Compose shows a dedicated PostgreSQL.
+Prefect writes heavily to its state tables during flow execution.
+Mixing with business data would cause lock contention. Separate
+DB means you can wipe Prefect's history without touching anything else.
+
+How it triggers work:
+Prefect flows don't access the database directly. They call nova-api
+endpoints via HTTP. Example: the rfm_scoring flow calls
+POST nova-api:3000/internal/jobs/rfm-recalculate. The API does the
+actual DB work. Prefect just orchestrates timing and retries.
+```
+
+### Containers 5-7: Three PostgreSQL Instances
+
+```
+Container 5: pg-nova
 ├── Image: pgvector/pgvector:pg16
-├── Database: nova (single DB, multi-tenant via RLS)
-├── Extensions: vector (embeddings), uuid-ossp (UUIDs)
-├── Config: shared_buffers=1GB, effective_cache_size=2GB,
-│           work_mem=32MB, max_connections=100
-├── Memory: ~2 GB
-├── Port: 5432 (internal only, not exposed to internet)
-├── Data: /mnt/storage/postgres (block storage volume)
-└── Backup: pg_dump daily cron → /mnt/storage/backups
+├── Port: 5432
+├── RAM: ~2 GB (shared_buffers=768MB, effective_cache_size=1.5GB)
+├── Data: /mnt/storage/pg-nova (block storage)
+├── Extensions: vector, uuid-ossp
+├── RLS: enabled (multi-tenant isolation)
+├── Backup: daily pg_dump → /mnt/storage/backups/nova
+└── Contains: tenants, products, customers, orders, payments,
+              inventory, events, subscriptions — ALL business data
 
-CONTAINER 4: redis
-├── Image: redis:7-alpine
-├── Config: maxmemory 256mb, maxmemory-policy allkeys-lru,
-│           appendonly yes
-├── Uses: BullMQ queues, session cache, rate limiting,
-│         behavioral event buffer (Redis Streams)
-├── Memory: ~256-512 MB
-├── Port: 6379 (internal only)
-└── Data: Docker volume (persisted)
+Container 6: pg-agno
+├── Image: pgvector/pgvector:pg16
+├── Port: 5433
+├── RAM: ~512 MB (shared_buffers=128MB)
+├── Data: /mnt/storage/pg-agno (block storage)
+├── Extensions: vector
+├── Backup: weekly pg_dump (less critical, can be regenerated)
+└── Contains: agent sessions, memories, traces, knowledge vectors
 
-CONTAINER 5 (optional): nova-agents
-├── Runtime: Python 3.12
-├── Framework: Agno SDK
-├── Agents: Sales, Finance, Content, Support
-├── Memory: ~512 MB (only when agents are invoked)
-├── Port: 8000 (internal only, called by nova-app)
-└── Connects to: PostgreSQL (for memory/knowledge),
-                 OpenAI API, Groq API, Photoroom API
+Container 7: pg-prefect
+├── Image: postgres:16-alpine (no pgvector needed)
+├── Port: 5434
+├── RAM: ~256 MB (shared_buffers=64MB)
+├── Data: Docker volume (not block storage — less critical)
+├── Backup: not needed (flow history is operational, not business data)
+└── Contains: flow runs, task runs, deployments, schedules
 ```
 
-**Why container 5 is optional**: For MVP, the Agno agents can run as a Python subprocess spawned by nova-app when needed, not as a separate always-running container. This saves ~512 MB. When agent usage grows (Phase 2+), spin it out to its own container.
-
-**Total RAM usage**:
-
-| Container | RAM |
-|---|---|
-| Dokploy + Traefik | 350 MB |
-| nova-app | 1.5 GB |
-| nova-dashboard | 512 MB |
-| postgres | 2 GB |
-| redis | 512 MB |
-| OS + Docker | 500 MB |
-| Swap headroom | 2 GB (swap file) |
-| **Total** | **5.4 GB used / 8 GB available** |
-
-2.6 GB free + 2 GB swap = comfortable margin.
-
-### Layer 4 — Cloudflare (Catalog + DNS + CDN)
+### Container 8: Redis
 
 ```
-Cloudflare Account (free tier)
-├── DNS: nova.app (or chosen domain)
-│   ├── A record: api.nova.app → Hetzner CX32 IP
-│   ├── A record: app.nova.app → Hetzner CX32 IP
-│   └── CNAME: *.nova.app → Cloudflare Workers route
-├── Workers: nova-catalog
-│   ├── Nuxt 3 SSR (renders product pages at edge)
-│   ├── Fetches data from api.nova.app (cached 60s)
-│   ├── ~700 KB bundle (gzip)
-│   └── Free tier: 100K requests/day
-├── R2 Storage (S3-compatible)
-│   ├── Product images (uploaded via nova-app → R2 API)
-│   ├── Payment screenshots
-│   ├── Import files
-│   ├── $0.015/GB/month storage
-│   ├── Free egress (no bandwidth charges)
-│   └── Replaces MinIO (saves a container + RAM)
-└── CDN: static assets auto-cached globally
-```
+Image: redis:7-alpine
+Port: 6379
+RAM: ~512 MB
+Config: maxmemory 384mb, appendonly yes
 
-**Why Cloudflare R2 instead of MinIO**: MinIO as a container uses ~512 MB RAM. R2 is S3-compatible (same API), costs $0.015/GB/month with free egress, and doesn't consume server resources. At 10 GB of images = $0.15/month. At 100 GB = $1.50/month. Much cheaper than the RAM MinIO would consume.
+Shared by:
+├── nova-api: BullMQ job queues, session cache, rate limiting
+├── nova-api: Redis Streams (behavioral event buffer)
+├── prefect: message broker (PREFECT_REDIS_MESSAGING_HOST)
+└── nova-agents: (optional) cache for hot agent data
 
-### Layer 5 — External Services
-
-```
-Clerk (auth)
-├── Phone auth (SMS OTP) — critical for Venezuela
-├── Google social login
-├── JWT tokens verified by nova-app middleware
-├── Tenant extraction: Clerk user_id → tenant lookup
-├── Free tier: 10,000 MAU
-└── Cost at 200 users: $0
-
-Resend (email)
-├── Monthly PDF reports
-├── Weekly summaries
-├── Welcome emails
-├── React Email templates (built in TypeScript)
-├── Free tier: 3,000 emails/month
-└── Cost at 200 users: $0
-
-OpenAI (LLM)
-├── GPT-5 Mini: workhorse for all agent tasks
-│   ├── $0.25/1M input tokens, $2.00/1M output tokens
-│   ├── Vision capability (OCR for payment screenshots)
-│   └── Used by: all 4 agents, column mapping, content generation
-├── Cost at 200 users: ~$3/month
-└── Fallback: Groq Llama for simple tasks
-
-Groq (fast inference + voice)
-├── Whisper: voice transcription (<1 second for 30s audio)
-├── Llama 4 Scout: fast/cheap text tasks ($0.11/1M input)
-├── Used by: voice commands, intent detection, simple parsing
-├── Free tier available
-└── Cost at 200 users: ~$2/month
-
-Photoroom (image AI)
-├── Background removal
-├── Studio lighting
-├── Product staging
-├── $0.02/image via API
-├── Pro plan: $7.50/month (includes API access)
-└── Cost at 200 users: ~$40/month (2,000 images)
-
-Google Cloud (Sheets API)
-├── Service account for reading merchant Google Sheets
-├── Merchant shares their sheet with Nova's service account email
-├── Free (Google Sheets API has generous free tier)
-└── Cost: $0
-```
-
-### Layer 6 — Application Code (Monorepo)
-
-```
-novaincs/                          ← GitHub repo
-├── apps/
-│   ├── api/                       ← Hono API server
-│   │   ├── src/
-│   │   │   ├── routes/            ← API endpoints (products, orders, customers, etc.)
-│   │   │   ├── middleware/        ← Clerk auth, tenant context, RLS, rate limiting
-│   │   │   ├── workers/           ← BullMQ job processors (images, events, reports)
-│   │   │   ├── db/
-│   │   │   │   ├── schema.ts      ← Drizzle schema (all tables)
-│   │   │   │   ├── migrations/    ← SQL migration files
-│   │   │   │   └── seed.ts        ← Test data
-│   │   │   └── lib/               ← Shared utilities (rate calc, RFM scoring, etc.)
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   │
-│   ├── dashboard/                 ← Nuxt 3 merchant PWA
-│   │   ├── pages/                 ← Route-based pages (home, products, orders, etc.)
-│   │   ├── components/            ← Dashboard-specific components
-│   │   ├── composables/           ← Vue composables (useAuth, useApi, etc.)
-│   │   ├── Dockerfile
-│   │   └── nuxt.config.ts
-│   │
-│   └── catalog/                   ← Nuxt 3 buyer PWA (Cloudflare Workers)
-│       ├── pages/                 ← Catalog pages (browse, product detail, cart, checkout)
-│       ├── components/            ← Catalog-specific components
-│       ├── server/                ← Nuxt server routes (fetch from Nova API)
-│       ├── wrangler.toml          ← Cloudflare Workers config
-│       └── nuxt.config.ts         ← preset: 'cloudflare-workers'
-│
-├── agents/                        ← Python, Agno agents
-│   ├── sales_agent.py
-│   ├── finance_agent.py
-│   ├── content_agent.py
-│   ├── support_agent.py
-│   ├── migration_agent.py         ← MCP-based data import
-│   ├── mcp_server.py              ← Nova's proprietary MCP server
-│   └── requirements.txt
-│
-├── packages/
-│   ├── shared/                    ← TypeScript types shared across all apps
-│   │   ├── types/                 ← Product, Customer, Order, etc.
-│   │   └── utils/                 ← Formatting, validation, rate calculation
-│   └── ui/                        ← Shared Vue components (Shadcn-vue based)
-│       └── components/            ← Button, Card, Input, ProductCard, etc.
-│
-├── docker-compose.yml             ← Production compose (postgres + redis)
-├── docker-compose.dev.yml         ← Local dev compose (adds hot reload)
-├── pnpm-workspace.yaml
-├── turbo.json                     ← Turborepo build config
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                 ← Lint + typecheck + test on PR
-│       └── deploy-catalog.yml     ← Deploy catalog to Cloudflare Workers on merge
-└── docs/                          ← Planning documents (01-11)
-```
-
-### Layer 7 — Data Flow (How Everything Connects)
-
-```
-BUYER visits catalog
-  → Cloudflare Worker (edge SSR)
-  → HTTP GET api.nova.app/v1/catalog/:slug/products
-  → Hono API (nova-app container)
-  → Drizzle → PostgreSQL (with RLS, tenant scoped)
-  → JSON response → Worker renders HTML → buyer sees page
-
-BUYER adds to cart + checks out
-  → Catalog PWA (client-side cart in localStorage)
-  → HTTP POST api.nova.app/v1/orders (name, phone, items, payment method)
-  → Hono API → Drizzle → PostgreSQL (create order + reserve stock)
-  → Response: order confirmation + payment instructions
-  → Buyer pays via Pago Movil → uploads screenshot
-  → HTTP POST api.nova.app/v1/payments/upload (image file)
-  → BullMQ job: OCR verification (GPT-5 Mini vision)
-  → Result stored in PostgreSQL → merchant notified
-
-MERCHANT opens dashboard
-  → app.nova.app (Nuxt 3 SSR on Hetzner)
-  → Clerk auth → JWT → nova-app verifies → tenant context set
-  → Dashboard fetches data from nova-app API (same server, localhost)
-  → Sees: orders, customers, inventory, AI suggestions
-
-MERCHANT talks to AI
-  → Dashboard → HTTP POST api.nova.app/v1/agent/chat
-  → nova-app → Agno agent (Python, same server or subprocess)
-  → Agent queries PostgreSQL (tenant-scoped via user_id)
-  → Agent calls GPT-5 Mini for reasoning
-  → Response streamed back to dashboard
-
-SCHEDULED JOBS (Prefect)
-  → Prefect worker (runs inside nova-app or separate process)
-  → Hourly: recalculate RFM scores (SQL aggregation)
-  → Daily 8am: generate briefing (GPT-5 Mini)
-  → Weekly Monday: send email summary (Resend API)
-  → Monthly 1st: generate PDF report (Puppeteer → Resend)
-  → Every 15min: check exchange rate (HTTP fetch → DB update)
+Why one Redis (not three):
+Redis is stateless for most uses (cache, queues, pub/sub). The data
+is ephemeral or reproducible. Unlike PostgreSQL where data corruption
+is catastrophic, Redis data loss means jobs retry and cache rebuilds.
+One Redis instance with logical databases (DB 0 = BullMQ, DB 1 = cache,
+DB 2 = Prefect) is the standard pattern.
 ```
 
 ---
 
-## 3. Cost Summary
+## 4. Memory Budget (16 GB)
+
+| Container | RAM Allocated | Notes |
+|---|---|---|
+| Dokploy + Traefik | 350 MB | Deployment management |
+| nova-api | 1,000 MB | API + BullMQ workers |
+| nova-dashboard | 512 MB | Nuxt 3 SSR |
+| nova-agents | 1,000 MB | Agno AgentOS (Python) |
+| prefect-server + worker | 512 MB | Orchestration |
+| pg-nova | 2,000 MB | Business database |
+| pg-agno | 512 MB | Agent database |
+| pg-prefect | 256 MB | Prefect database |
+| redis | 512 MB | Cache + queues |
+| OS + Docker | 500 MB | Kernel, Docker daemon |
+| **Total used** | **7,154 MB** | |
+| **Free** | **~8.8 GB** | Headroom for spikes, growth |
+
+8.8 GB free. That's enough headroom for traffic spikes, PostgreSQL query caches, and growth to 500+ merchants without upgrading.
+
+---
+
+## 5. Updated Cost
 
 | Component | Monthly Cost |
 |---|---|
-| Hetzner CX32 | $8.49 |
-| Hetzner backups | $1.70 |
-| Hetzner block storage (50 GB) | $2.60 |
-| Cloudflare (Workers + R2 + DNS) | $0 (free tier) |
-| Clerk | $0 (free tier) |
-| Resend | $0 (free tier) |
+| Hetzner CX42 (8 vCPU, 16 GB) | $16.49 |
+| Hetzner backups | $3.30 |
+| Hetzner block storage (100 GB) | $5.20 |
+| Cloudflare (Workers + R2 + DNS) | $0 |
+| Clerk | $0 |
+| Resend | $0 |
 | OpenAI (GPT-5 Mini) | $3 |
-| Groq (Whisper + Llama) | $2 |
+| Groq | $2 |
 | Photoroom | $40 |
-| Cloudflare R2 (~10 GB images) | $0.15 |
+| Cloudflare R2 (~10 GB) | $0.15 |
 | Domain | $1.25 |
-| **Total** | **$59.19/month** |
+| **Total** | **$71.39/month** |
 
-Revenue at 200 merchants: ~$1,340/month. Margin: 95.6%.
+$12 more than the CX32 plan. At $15/merchant, you need 5 paying merchants to cover the entire infrastructure. Revenue at 200 merchants: ~$1,340/month. Margin: 94.7%.
 
 ---
 
-## 4. What's Missing: Nothing
+## 6. Docker Compose (Production)
 
-Every component is named. Every connection is mapped. Every cost is calculated. The stack is:
+```yaml
+services:
+  # === APPLICATION SERVICES ===
 
-- **Dokploy** for deployment (lighter than Coolify, same features)
-- **Hono** for API (lightest TypeScript HTTP framework)
-- **Drizzle** for database (lightest TypeScript ORM)
-- **Nuxt 3** for both PWAs (one framework, shared components)
-- **Cloudflare Workers** for catalog edge rendering
-- **Cloudflare R2** for image storage (replaces MinIO)
-- **Agno** for AI agents (model-agnostic, MCP-native)
-- **BullMQ** for background jobs (runs on existing Redis)
-- **Prefect** for scheduled workflows (runs on existing PostgreSQL)
-- **Clerk** for auth (phone + social)
-- **Resend** for email (reports, notifications)
-- **GPT-5 Mini** for LLM tasks (cheapest with vision)
-- **Groq** for voice + fast inference
-- **Photoroom** for image enhancement
+  nova-api:
+    build: ./apps/api
+    container_name: nova-api
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgresql://nova:${PG_NOVA_PASSWORD}@pg-nova:5432/nova
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      AGENTS_URL: http://nova-agents:8000
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PHOTOROOM_API_KEY: ${PHOTOROOM_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    depends_on:
+      pg-nova: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 1G }
+    networks: [nova-net]
 
-14 components. Each one chosen for a specific reason. Each one replaceable independently. Nothing redundant. Nothing missing.
+  nova-dashboard:
+    build: ./apps/dashboard
+    container_name: nova-dashboard
+    restart: unless-stopped
+    ports: ["3001:3000"]
+    environment:
+      NUXT_PUBLIC_API_URL: http://nova-api:3000
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  nova-agents:
+    build: ./agents
+    container_name: nova-agents
+    restart: unless-stopped
+    ports: ["8000:8000"]
+    environment:
+      AGNO_DB_URL: postgresql://agno:${PG_AGNO_PASSWORD}@pg-agno:5432/agno
+      NOVA_DB_URL: postgresql://nova_readonly:${PG_NOVA_RO_PASSWORD}@pg-nova:5432/nova
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on:
+      pg-agno: { condition: service_healthy }
+      pg-nova: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 1G }
+    networks: [nova-net]
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    container_name: nova-prefect
+    restart: unless-stopped
+    ports: ["4200:4200"]
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:${PG_PREFECT_PASSWORD}@pg-prefect:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 2
+    command: >
+      bash -c "prefect server start --no-services &
+               prefect server services start &
+               prefect worker start --pool nova-pool"
+    depends_on:
+      pg-prefect: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  # === DATABASES ===
+
+  pg-nova:
+    image: pgvector/pgvector:pg16
+    container_name: pg-nova
+    restart: unless-stopped
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: nova
+      POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
+      POSTGRES_DB: nova
+    volumes:
+      - /mnt/storage/pg-nova:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c" 
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=1536MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "max_connections=100"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nova"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 2G }
+    networks: [nova-net]
+
+  pg-agno:
+    image: pgvector/pgvector:pg16
+    container_name: pg-agno
+    restart: unless-stopped
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: agno
+      POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
+      POSTGRES_DB: agno
+    volumes:
+      - /mnt/storage/pg-agno:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=50"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agno"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  pg-prefect:
+    image: postgres:16-alpine
+    container_name: pg-prefect
+    restart: unless-stopped
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: ${PG_PREFECT_PASSWORD}
+      POSTGRES_DB: prefect
+    volumes:
+      - prefect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 256M }
+    networks: [nova-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: nova-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --databases 4
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+volumes:
+  prefect_pgdata:
+  redis_data:
+
+networks:
+  nova-net:
+    name: nova-network
+```
+
+---
+
+## 7. What This Architecture Guarantees
+
+| Failure Scenario | Impact | Recovery |
+|---|---|---|
+| nova-api crashes | Dashboard shows error, catalog serves cached pages | Docker restarts in <5 seconds |
+| nova-agents crashes | AI features unavailable, everything else works | Docker restarts, agent state preserved in pg-agno |
+| prefect crashes | Scheduled jobs pause, everything else works | Docker restarts, resumes from last checkpoint |
+| pg-nova crashes | All business operations stop | Docker restarts, data on block storage is durable |
+| pg-agno crashes | Agents can't access memory, fall back to stateless mode | Docker restarts, agent data preserved |
+| pg-prefect crashes | Scheduled jobs stop | Docker restarts, Prefect rebuilds state |
+| redis crashes | Cache cold, jobs queue up, events buffer | Docker restarts, BullMQ replays pending jobs |
+| Entire server crashes | Everything stops | Hetzner restarts VM, Docker Compose restarts all containers |
+
+No single container failure takes down the entire system. That's the point of isolation.
