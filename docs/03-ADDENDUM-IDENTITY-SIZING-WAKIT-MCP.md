@@ -254,7 +254,7 @@ For a typical merchant with moderate activity:
 | `order_items` | 100-500 | ~150 bytes | ~75 KB | |
 | `payments` | 50-200 | ~250 bytes | ~50 KB | |
 | `inventory_movements` | 100-400 | ~150 bytes | ~60 KB | |
-| `images` (metadata) | 10-30 | ~200 bytes | ~6 KB | Actual images in MinIO, not PostgreSQL |
+| `images` (metadata) | 10-30 | ~200 bytes | ~6 KB | Actual images in Cloudflare R2, not PostgreSQL |
 | `agent_actions` | 100-300 | ~300 bytes | ~90 KB | AI agent suggestions and executions |
 | **TOTAL per merchant** | | | **~1.4 MB/month** | |
 
@@ -308,7 +308,7 @@ CREATE TABLE customer_events_2026_06 PARTITION OF customer_events
 |---|---|---|
 | PostgreSQL (hot data, 90 days) | ~100 GB | Included in dedicated server |
 | PostgreSQL (archived) | ~400 GB | ~$15/mo (volume storage) |
-| MinIO (images) | ~500 GB (avg 100 images/merchant x 1MB) | ~$15/mo (volume storage) |
+| Cloudflare R2 (images) | ~500 GB (avg 100 images/merchant x 1MB) | ~$15/mo (volume storage) |
 | Redis | ~2 GB (cache + queues) | Included in dedicated server |
 | ClickHouse (Phase 3+) | ~50 GB (compressed analytics) | ~$5/mo (volume storage) |
 | **Total** | ~1 TB | **~$35/mo additional storage** |
@@ -473,7 +473,7 @@ const novaMigrationMCP = new MCPServer({
       name: "parse_uploaded_file",
       description: "Parse an uploaded Excel or CSV file",
       inputSchema: {
-        file_id: { type: "string", description: "ID of uploaded file in MinIO" },
+        file_id: { type: "string", description: "ID of uploaded file in Cloudflare R2" },
         format: { type: "string", enum: ["xlsx", "csv", "tsv"] },
       },
     },

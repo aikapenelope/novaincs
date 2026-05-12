@@ -719,7 +719,7 @@ This supports the common Venezuelan pattern where the owner has 1-2 employees wh
 | **API Gateway** | Clerk auth + tenant lookup | Unauthenticated access |
 | **Application** | Drizzle middleware adds tenant_id to every query | Accidental cross-tenant queries |
 | **Database** | PostgreSQL RLS policies | Bugs in application code leaking data |
-| **Storage** | MinIO bucket-per-tenant or prefix-per-tenant | Image/file cross-access |
+| **Storage** | Cloudflare R2 prefix-per-tenant | Image/file cross-access |
 | **Cache** | Redis key prefix with tenant_id | Cache poisoning across tenants |
 | **Agents** | Agno agent context includes tenant_id | Agent actions scoped to tenant |
 

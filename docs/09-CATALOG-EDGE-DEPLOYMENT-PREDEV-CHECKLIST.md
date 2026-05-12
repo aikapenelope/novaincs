@@ -54,7 +54,7 @@ The catalog PWA is a **read-heavy, low-interactivity** application. Customers br
 
 ```
 BUYER CATALOG (Nuxt 3)          MERCHANT DASHBOARD (Nuxt 3)
-Deployed to: Cloudflare Workers  Deployed to: Hetzner CX32
+Deployed to: Cloudflare Workers  Deployed to: Hetzner CX42
 Why: Edge SSR, ~30ms TTFB        Why: Needs direct DB access,
      globally, $5/mo                   agents, background jobs
      (Workers free tier: 100K     
@@ -63,11 +63,11 @@ Why: Edge SSR, ~30ms TTFB        Why: Needs direct DB access,
          │ API calls                    │ Direct DB access
          ▼                              ▼
     Nova API (Hono)              Nova API (Hono)
-    on Hetzner CX32              on Hetzner CX32
+    on Hetzner CX42              on Hetzner CX42
          │                              │
          ▼                              ▼
     PostgreSQL + Redis           PostgreSQL + Redis
-    on Hetzner CX32              on Hetzner CX32
+    on Hetzner CX42              on Hetzner CX42
 ```
 
 **The catalog PWA runs on Cloudflare Workers.** It's a separate Nuxt 3 app that:
@@ -144,7 +144,7 @@ These are decisions only the founder can make. They block everything else.
 
 | # | Account | What's Needed | Cost | Time | Blocks |
 |---|---|---|---|---|---|
-| A1 | **Hetzner Cloud** | Create account, verify identity, provision CX32 in Ashburn | $8.49/mo | 1-2 hours (may need ID verification) | All deployment |
+| A1 | **Hetzner Cloud** | Create account, verify identity, provision CX42 in Ashburn | $16.49/mo | 1-2 hours (may need ID verification) | All deployment |
 | A2 | **Cloudflare** | Create account, add domain, configure DNS, enable Workers | Free (free tier) | 30 min | Catalog deployment, SSL |
 | A3 | **Clerk** | Create project, configure phone auth + Google login, set redirect URLs | Free (10K MAU) | 30 min | Auth |
 | A4 | **Resend** | Create account, verify domain (SPF/DKIM/DMARC), create API key | Free (3K emails/mo) | 1 hour (DNS propagation) | Email reports |
@@ -179,7 +179,7 @@ These are decisions only the founder can make. They block everything else.
 | E2 | **Nuxt 3 catalog app** | `npx nuxi init` with Cloudflare Workers preset, Tailwind CSS 4, Shadcn-vue | 1 hour |
 | E3 | **Nuxt 3 dashboard app** | `npx nuxi init` with Node server preset, Tailwind CSS 4, Shadcn-vue, @vite-pwa/nuxt | 1 hour |
 | E4 | **Hono API server** | Hono project with Drizzle ORM, Clerk middleware, CORS, rate limiting | 2 hours |
-| E5 | **Docker Compose (local dev)** | PostgreSQL 16 + pgvector, Redis 7, MinIO, Caddy. One `docker compose up` starts everything. | 2 hours |
+| E5 | **Docker Compose (local dev)** | 3x PostgreSQL (nova, agno, prefect) + Redis 7. One `docker compose up` starts everything. | 2 hours |
 | E6 | **Drizzle schema + migrations** | All MVP tables: tenants, products, categories, customers, orders, order_items, payments, inventory_movements, customer_events. RLS policies. | 2-3 days |
 | E7 | **CI/CD pipeline** | GitHub Actions: lint, typecheck, test on PR. Deploy to Hetzner on merge to main. Deploy catalog to Cloudflare Workers. | 3-4 hours |
 | E8 | **Clerk integration** | Auth middleware in Hono, tenant context extraction, RLS session variable setting | 4 hours |
@@ -193,14 +193,14 @@ These are decisions only the founder can make. They block everything else.
 
 | # | Task | Description | Time |
 |---|---|---|---|
-| H1 | **Provision CX32** | 4 vCPU, 8 GB RAM, 80 GB NVMe, Ashburn datacenter | 5 min |
+| H1 | **Provision CX42** | 8 vCPU, 16 GB RAM, 160 GB NVMe, Ashburn datacenter | 5 min |
 | H2 | **SSH key setup** | Generate and add SSH key for secure access | 10 min |
 | H3 | **Firewall rules** | Allow 80 (HTTP), 443 (HTTPS), 22 (SSH). Block everything else. | 10 min |
 | H4 | **Docker + Docker Compose** | Install Docker Engine and Docker Compose on the server | 15 min |
-| H5 | **Block storage** | Attach 50 GB volume for MinIO images, mount at /mnt/storage | 10 min |
+| H5 | **Block storage** | Attach 100 GB volume for PostgreSQL data, mount at /mnt/storage | 10 min |
 | H6 | **Automated backups** | Enable Hetzner automated backups ($1.70/mo) | 5 min |
-| H7 | **Caddy configuration** | Caddyfile with reverse proxy rules for API, dashboard, and auto-SSL | 30 min |
-| H8 | **Docker Compose (production)** | Production docker-compose.yml with all 5 containers, resource limits, restart policies | 1 hour |
+| H7 | **Dokploy installation** | Install Dokploy (includes Traefik for SSL/routing) | 15 min |
+| H8 | **Docker Compose (production)** | Production docker-compose.yml with 8 containers, resource limits, restart policies, health checks | 1 hour |
 | H9 | **Deploy script** | Shell script or GitHub Action that builds, pushes images, and restarts containers on the server | 1 hour |
 | H10 | **Monitoring** | Basic uptime monitoring (UptimeRobot free tier or similar) + Docker logs | 30 min |
 

@@ -99,93 +99,51 @@ At 200 merchants using voice input 10 times/day: $0.002 x 10 x 200 x 30 = **$12/
 
 ---
 
-## 2. Minimal Infrastructure: First 200 Users
+## 2. Infrastructure: First 200 Users
 
-### Why the Previous Spec Was Oversized
+> **NOTE**: This section is superseded by **doc 12 (COMPLETE-STACK-EXPLAINED.md)** which defines the production architecture with proper service isolation. Key changes: CX42 (16 GB) instead of CX32 (8 GB), 8 containers instead of 5, 3 separate PostgreSQL instances (nova, agno, prefect), Dokploy for deployment, Cloudflare R2 for storage. Total cost: $71.39/month.
 
-The CCX33 (8 vCPU, 32GB RAM, ~$50/month) was sized for 1,000 users. For the first 200 users, that's overkill. Here's the right-sized plan:
-
-### The Minimal Setup: One CX32
+### Server: Hetzner CX42
 
 | Component | Spec | Cost |
 |---|---|---|
-| **Hetzner CX32** | 4 vCPU, 8 GB RAM, 80 GB NVMe | **$8.49/month** |
-| **Backups** | Automated, 20% of server cost | $1.70/month |
-| **Block Storage** | 50 GB (for MinIO images) | $2.60/month |
-| **Total Infrastructure** | | **$12.79/month** |
+| **Hetzner CX42** | 8 vCPU, 16 GB RAM, 160 GB NVMe | **$16.49/month** |
+| **Backups** | Automated, 20% of server cost | $3.30/month |
+| **Block Storage** | 100 GB (PostgreSQL data) | $5.20/month |
+| **Total Infrastructure** | | **$24.99/month** |
 
-### What Runs on the CX32
+### What Runs on the CX42
 
-Not 10 separate containers. **5 containers** that consolidate services:
+**8 containers** with proper service isolation (see doc 12 for full docker-compose.yml):
 
-```yaml
-services:
-  # 1. The Application (API + Workers + Agents — ONE process)
-  nova:
-    image: nova/app:latest
-    ports: ["3000:3000"]
-    environment:
-      DATABASE_URL: postgresql://nova:***@postgres:5432/nova
-      REDIS_URL: redis://redis:6379
-      MODE: all  # runs API server + BullMQ workers + Agno agents in one process
-    mem_limit: 3g
+| Container | Role | RAM |
+|---|---|---|
+| nova-api | Hono API + BullMQ workers | 1 GB |
+| nova-dashboard | Nuxt 3 SSR (merchant PWA) | 512 MB |
+| nova-agents | Agno AgentOS (Python) | 1 GB |
+| prefect | Server + worker (scheduled jobs) | 512 MB |
+| pg-nova | PostgreSQL 16 + pgvector (business data, RLS) | 2 GB |
+| pg-agno | PostgreSQL 16 + pgvector (agent memories, sessions) | 512 MB |
+| pg-prefect | PostgreSQL 16 (flow runs, schedules) | 256 MB |
+| redis | Cache + BullMQ queues + Prefect messaging | 512 MB |
 
-  # 2. PostgreSQL (with pgvector)
-  postgres:
-    image: pgvector/pgvector:pg16
-    volumes: ["pgdata:/var/lib/postgresql/data"]
-    shm_size: "128mb"
-    mem_limit: 2g
-    command: >
-      postgres
-        -c shared_buffers=512MB
-        -c effective_cache_size=1GB
-        -c work_mem=16MB
-        -c max_connections=100
+**Dokploy** manages deployment (Traefik for SSL/routing, git-based auto-deploy). Images stored on **Cloudflare R2** (no MinIO container needed).
 
-  # 3. Redis (cache + queues)
-  redis:
-    image: redis:7-alpine
-    volumes: ["redisdata:/data"]
-    mem_limit: 512m
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-
-  # 4. MinIO (images)
-  minio:
-    image: minio/minio:latest
-    volumes: ["/mnt/storage:/data"]  # block storage mounted here
-    mem_limit: 512m
-    command: server /data --console-address ":9001"
-
-  # 5. Caddy (reverse proxy + auto SSL)
-  caddy:
-    image: caddy:2-alpine
-    ports: ["80:80", "443:443"]
-    volumes: ["./Caddyfile:/etc/caddy/Caddyfile", "caddy_data:/data"]
-    mem_limit: 128m
-```
-
-**Key simplification**: The Nova app runs as ONE Node.js process that handles:
-- Hono API server (HTTP requests)
-- Nuxt SSR (server-side rendering for catalog and dashboard)
-- BullMQ workers (background jobs: image processing, event processing, reports)
-- Agno agents (AI agent invocations, on-demand, not always running)
-
-This is possible because Node.js is single-threaded with async I/O. One process can handle API requests AND process background jobs using BullMQ's worker mode. The agents only consume resources when invoked (they're not running 24/7 — they're called on-demand via API).
-
-**Caddy instead of Traefik**: Caddy is simpler, auto-configures SSL with zero configuration, and uses less memory. For a single-server setup, Caddy is the right choice. Traefik is for multi-server orchestration.
-
-### Memory Budget (8 GB Total)
+### Memory Budget (16 GB Total)
 
 | Component | Allocated | Notes |
 |---|---|---|
-| Nova app (API + workers + agents) | 3 GB | Node.js with BullMQ workers |
-| PostgreSQL | 2 GB | 512MB shared_buffers + query cache |
-| Redis | 512 MB | 256MB data + overhead |
-| MinIO | 512 MB | Minimal, mostly I/O bound |
-| Caddy | 128 MB | Reverse proxy, very light |
-| OS + Docker overhead | 1.3 GB | Linux kernel, Docker daemon |
-| **Total** | **~7.5 GB** | Fits in 8 GB with headroom |
+| Dokploy + Traefik | 350 MB | Deployment management |
+| nova-api | 1,000 MB | API + BullMQ workers |
+| nova-dashboard | 512 MB | Nuxt 3 SSR |
+| nova-agents | 1,000 MB | Agno AgentOS (Python) |
+| prefect | 512 MB | Orchestration |
+| pg-nova | 2,000 MB | Business database |
+| pg-agno | 512 MB | Agent database |
+| pg-prefect | 256 MB | Prefect database |
+| redis | 512 MB | Cache + queues |
+| OS + Docker | 500 MB | Kernel, Docker daemon |
+| **Total** | **~7.2 GB** | 8.8 GB free headroom |
 
 ### External Services for 200 Users
 
@@ -203,24 +161,23 @@ This is possible because Node.js is single-threaded with async I/O. One process 
 
 | Category | Monthly Cost |
 |---|---|
-| Hetzner (server + backup + storage) | $12.79 |
+| Hetzner (server + backup + storage) | $24.99 |
 | External services | $46.00 |
-| **Total** | **$58.79/month** |
+| **Total** | **$71.39/month** |
 
 **Revenue at 200 users** (assuming 40% free, 40% Starter $8, 15% Pro $15, 5% Business $25):
 - 80 free + 80 x $8 + 30 x $15 + 10 x $25 = **$1,340/month**
 
-**Margin: 95.6%** — even at 200 users, the economics work.
+**Margin: 94.7%** — even at 200 users, the economics work.
 
 ### When to Upgrade
 
 | Signal | Action |
 |---|---|
-| CPU sustained > 70% for 1 hour | Upgrade to CX42 (8 vCPU, 16 GB, $16.49/mo) |
-| RAM usage > 85% | Upgrade to CX42 |
-| Disk > 70 GB | Add more block storage ($0.052/GB/mo) |
-| 500+ merchants | Consider separating DB to its own server |
-| 1,000+ merchants | Move to the CCX33 dedicated plan from doc 06 |
+| CPU sustained > 70% for 1 hour | Upgrade to CX52 (16 vCPU, 32 GB, $32.49/mo) |
+| RAM usage > 85% | Upgrade to CX52 |
+| Disk > 120 GB | Add more block storage ($0.052/GB/mo) |
+| 1,000+ merchants | Consider separating databases to their own server |
 
 Hetzner upgrades are live — you click "resize" in the console and the server upgrades in minutes with no data loss.
 
@@ -296,7 +253,7 @@ Prefect Server runs as a lightweight Python process with a PostgreSQL backend (t
     ports: ["4200:4200"]  # Prefect UI (optional, for debugging)
 ```
 
-This adds ~512MB RAM to the server. On the CX32 (8GB), we adjust the Nova app from 3GB to 2.5GB. Still fits comfortably.
+Prefect runs as its own container with its own PostgreSQL instance (pg-prefect). See doc 12 for the full production docker-compose.yml.
 
 ---
 
@@ -459,7 +416,7 @@ The architecture is designed so that **no single component failure kills the pro
 The system as designed across all seven documents is:
 
 - **Complete** for launch (89 features, 10 modules, 3 tiers)
-- **Minimal** for first deployment (1 server, 5 containers, $59/month)
+- **Robust** for first deployment (1 server, 8 isolated containers, $71/month)
 - **Extensible** for unlimited growth (composable, API-first, agent-native)
 - **Defensible** for 3-4 years (data moat, AI moat, integration moat, network moat)
 - **Economically viable** from day one (95%+ margins even at 200 users)

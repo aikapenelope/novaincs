@@ -294,21 +294,21 @@ For the first 1,000 merchants, a single Hetzner server handles everything:
 
 | Component | Server | Specs | Monthly Cost |
 |---|---|---|---|
-| **Application Server** | CCX33 (Dedicated) | 8 vCPU, 32 GB RAM, 240 GB NVMe | ~$50/month |
+| **Application Server** | CX42 | 8 vCPU, 16 GB RAM, 160 GB NVMe | ~$16.49/month |
 | **Block Storage** | Volume | 100 GB (expandable) | ~$5/month |
 | **Backups** | Automated | 20% of server cost | ~$10/month |
 | **Load Balancer** | Not needed yet | — | $0 |
 | **Total Infrastructure** | | | **~$65/month** |
 
-**Why CCX33 (Dedicated vCPU)?**
+**Why CX42 (Dedicated vCPU)?**
 - Dedicated CPUs mean no "noisy neighbor" problem. PostgreSQL and Redis need consistent performance.
-- 32 GB RAM is enough for: PostgreSQL (16 GB allocated), Redis (4 GB), Node.js app (4 GB), Temporal (4 GB), OS + overhead (4 GB)
-- 240 GB NVMe handles the database + MinIO images for the first 1,000 merchants
+- 32 GB RAM is enough for: PostgreSQL (16 GB allocated), Redis (4 GB), Node.js app (4 GB), Prefect (4 GB), OS + overhead (4 GB)
+- 240 GB NVMe handles the database + Cloudflare R2 images for the first 1,000 merchants
 - 20 TB included bandwidth is more than enough
 
 ### 3.2 What Runs on the Server
 
-Everything runs in Docker containers managed by Docker Compose (or Coolify for easier management):
+Everything runs in Docker containers managed by Docker Compose (or Dokploy for easier management):
 
 ```yaml
 # docker-compose.yml (simplified)
@@ -393,7 +393,7 @@ Traefik handles SSL certificates automatically via Let's Encrypt.
 
 | Users | Infrastructure | Monthly Cost | When to Scale |
 |---|---|---|---|
-| 0-1,000 | 1x CCX33 + 100GB volume | ~$65/month | Start here |
+| 0-1,000 | 1x CX42 + 100GB volume | ~$25/month | Start here |
 | 1,000-5,000 | 1x CCX53 (16 vCPU, 64 GB) + 500GB volume | ~$120/month | When DB exceeds 200GB or CPU > 70% sustained |
 | 5,000-25,000 | 2 servers (app + DB separated) + managed backup | ~$250/month | When single server can't handle both app and DB |
 | 25,000-100,000 | 3+ servers (app cluster + DB primary/replica + Redis cluster) | ~$500-1,000/month | When you need high availability |
@@ -437,7 +437,7 @@ Even at the most expensive stage, infrastructure cost is less than 1% of revenue
 |---|---|
 | 1 | Project scaffolding: Nuxt 3 + Hono + Drizzle + PostgreSQL + Redis. Docker Compose for local dev. CI/CD pipeline (GitHub Actions). |
 | 2 | Multi-tenant schema with RLS. Clerk auth integration. Tenant CRUD. Basic API structure. |
-| 3 | Product CRUD with image upload to MinIO. Drizzle migrations. Basic catalog PWA (SSR). |
+| 3 | Product CRUD with image upload to Cloudflare R2. Drizzle migrations. Basic catalog PWA (SSR). |
 | 4 | Testing framework (Vitest + Playwright). RLS security tests. Staging deployment on Hetzner. |
 
 **Exit criteria**: Can create a merchant account, add products, and view a public catalog.
@@ -527,7 +527,7 @@ The composable, API-first, agent-native architecture was designed specifically f
 | **Drizzle ORM** | PostgreSQL queries | Read replicas, sharding (Citus), multi-region |
 | **Agno Agents** | 4 agents + 2 teams | Unlimited specialized agents per industry |
 | **MCP Protocol** | Google Sheets, Wakit | Any tool with an MCP server (200+ exist) |
-| **Temporal Workflows** | Payment, reports | Lending, insurance, payroll, compliance |
+| **Prefect Workflows** | Payment, reports | Lending, insurance, payroll, compliance |
 | **Feature Flags** | 3 tiers | Unlimited tiers, per-feature pricing, enterprise custom |
 | **WhatsApp** | Cloud API direct | Wakit full inbox, multi-channel (Instagram, Telegram) |
 | **Analytics** | PostgreSQL materialized views | ClickHouse, real-time dashboards, predictive models |
@@ -587,7 +587,7 @@ They use Nova as their business operating system. They pay $25/month and might m
 
 - New MCP servers connect new data sources
 - New Agno agents add new intelligence capabilities
-- New Temporal workflows add new business processes
+- New Prefect workflows add new business processes
 - New feature flags unlock new plan tiers
 - New API endpoints enable new integrations
 
