@@ -231,14 +231,14 @@ Nova is a **mobile-first commercial growth SaaS** that turns the merchant's phon
 ╠════════════════════════════════════════════════════════════════╣
 ║                   DATA LAYER                                   ║
 ║  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         ║
-║  │PostgreSQL│ │Redis 7   │ │MinIO     │ │ClickHouse│         ║
+║  │PostgreSQL│ │Redis 7   │ │Cloudflare R2     │ │ClickHouse│         ║
 ║  │16 +      │ │Cache +   │ │Object    │ │Analytics │         ║
 ║  │pgvector  │ │BullMQ    │ │Storage   │ │(Phase 3+)│         ║
 ║  └──────────┘ └──────────┘ └──────────┘ └──────────┘         ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                   DURABILITY LAYER                             ║
 ║  ┌─────────────────────────────────────────────────────────┐   ║
-║  │              Temporal.io (Workflow Engine)               │   ║
+║  │              Prefect 3 (Workflow Engine)               │   ║
 ║  │  Durable Execution | Saga Pattern | Retry | Scheduling  │   ║
 ║  └─────────────────────────────────────────────────────────┘   ║
 ╚════════════════════════════════════════════════════════════════╝
@@ -252,7 +252,7 @@ Nova is a **mobile-first commercial growth SaaS** that turns the merchant's phon
 
 **MCP-Native**: Model Context Protocol enables universal connectivity — Google Sheets, Excel, external WhatsApp bots, bank APIs, exchange rate APIs, delivery systems — all through a standardized protocol.
 
-**Durable**: Temporal.io guarantees that critical workflows (payments, campaigns, image processing) never fail silently. If a server crashes mid-workflow, it resumes exactly where it left off.
+**Durable**: Prefect 3 guarantees that critical workflows (payments, campaigns, image processing) never fail silently. If a server crashes mid-workflow, it resumes exactly where it left off.
 
 ---
 
@@ -321,14 +321,14 @@ Nova is a **mobile-first commercial growth SaaS** that turns the merchant's phon
 | **ORM** | Drizzle ORM | SQL-first, 7.4kb, zero deps, type inference without generation |
 | **Database** | PostgreSQL 16 + pgvector | Relational + vector embeddings for semantic search |
 | **Cache/Queue** | Redis 7 + BullMQ | Cache, sessions, pub/sub, job queues |
-| **Object Storage** | MinIO | S3-compatible, self-hosted |
+| **Object Storage** | Cloudflare R2 | S3-compatible, free egress, no container needed |
 | **Agent Framework** | Agno (AgentOS) | Multi-agent, model-agnostic, MCP native, WhatsApp native |
 | **LLM - Reasoning** | Claude Sonnet 4 (via API) | Best reasoning for business agents |
 | **LLM - Fast** | GPT-4.1-mini or Claude Haiku | For fast tasks (classification, extraction, OCR) |
 | **Voice** | Groq Whisper | Ultra-fast transcription for voice commands |
 | **Image AI** | Photoroom API | $0.02/image, best quality for ecommerce |
 | **OCR** | Tesseract.js (client) + Google Vision (server) | Client-side free + server-side for precision |
-| **Workflow Engine** | Temporal.io | Durable execution, saga pattern, retries, scheduling |
+| **Workflow Engine** | Prefect 3 | Workflow orchestration, scheduled jobs, retries |
 | **WhatsApp** | WhatsApp Cloud API (direct Meta) | 500 msg/sec, no intermediary, MM Lite API |
 | **Integration Protocol** | MCP (Model Context Protocol) | Universal standard for connecting agents with tools |
 | **Analytics** | ClickHouse (Phase 3+) | Behavioral analytics at scale, columnar, ultra-fast |

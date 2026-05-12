@@ -130,7 +130,7 @@ Temporal Cron Workflow (1st of month, 8am per timezone)
   → Finance Agent: query all financial data for the month
   → Content Agent: generate recommendations based on patterns
   → PDF Generator: render HTML template → PDF (Puppeteer)
-  → MinIO: store PDF (for in-app download)
+  → Cloudflare R2: store PDF (for in-app download)
   → Resend API: send email with PDF attachment
   → In-app: create notification card with link to report
   → (Optional) WhatsApp: send notification "Tu resumen esta listo"
@@ -163,7 +163,7 @@ The Temporal workflow ensures that if any step fails (e.g., Resend is down), it 
 | Frontend | Nuxt 3 | Nuxt 3 | Nuxt 3 |
 | Database | PostgreSQL 16 + pgvector | PostgreSQL (auto-provisioned) | PostgreSQL 16 + pgvector |
 | Queue | BullMQ on Redis | Encore Pub/Sub (built-in) | BullMQ on Redis |
-| Workflow | Temporal.io | Encore Cron + custom | Temporal.io |
+| Workflow | Prefect 3 | Encore Cron + custom | Prefect 3 |
 | Observability | OpenTelemetry + Grafana | Built-in (automatic) | OpenTelemetry + Grafana |
 | Agent Framework | Agno | Agno | Agno |
 | Bundle size | ~14kb (Hono) + ~7.4kb (Drizzle) | Larger (Rust runtime) | ~14MB+ (NestJS + decorators) |

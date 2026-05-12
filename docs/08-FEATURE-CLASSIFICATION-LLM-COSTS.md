@@ -30,7 +30,7 @@ Every feature falls into one of three categories:
 | C1 | Create product (CRUD) | **Deterministic** | — | Drizzle ORM insert |
 | C2 | Product variants | **Deterministic** | — | Relational schema, no AI |
 | C3 | Dual pricing (USD + Bs) | **Deterministic** | — | Math: price_bs = price_usd * rate. Rate from external API (BCV) |
-| C4 | Product images (upload) | **Deterministic** | — | File upload to MinIO |
+| C4 | Product images (upload) | **Deterministic** | — | File upload to Cloudflare R2 (S3-compatible) |
 | C5 | AI image enhancement | **External API** | Photoroom API | $0.02/image |
 | C6 | Public catalog PWA | **Deterministic** | — | Nuxt SSR, no AI |
 | C7 | Catalog SEO | **Deterministic** | — | Meta tags generated from product data, template-based |
@@ -55,7 +55,7 @@ Every feature falls into one of three categories:
 | P5 | Pago Movil flow | **Deterministic** | — | Display data + clipboard copy |
 | P6 | Zelle flow | **Deterministic** | — | Display data + reference field |
 | P7 | Cash on delivery | **Deterministic** | — | Status flag on order |
-| P8 | Screenshot upload | **Deterministic** | — | File upload to MinIO |
+| P8 | Screenshot upload | **Deterministic** | — | File upload to Cloudflare R2 (S3-compatible) |
 | P9 | OCR auto-verification | **LLM** | GPT-5 Mini (vision) | Image → extract amount, reference, bank. ~500 tokens per screenshot |
 | P10 | Unique payment link | **Deterministic** | — | UUID route, no AI |
 | P11 | WhatsApp deep link | **Deterministic** | — | URL construction with encoded text |
@@ -326,7 +326,7 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 
 | # | Task | Time Estimate | Blocks |
 |---|---|---|---|
-| 1 | Hetzner account + CX32 provisioned | 1 hour | Everything |
+| 1 | Hetzner account + CX42 provisioned | 1 hour | Everything |
 | 2 | Domain purchased + DNS configured | 1 hour | SSL, email, catalog URLs |
 | 3 | Clerk project created + configured | 30 min | Auth |
 | 4 | Resend account + domain verified | 1 hour | Email delivery |
@@ -348,7 +348,7 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 | Buyer persona and pain points | **Ready** |
 | Business model and pricing | **Ready** (3 tiers) |
 | LLM model selection and costs | **Ready** (this document) |
-| Infrastructure sizing | **Ready** (CX32 for 200 users) |
+| Infrastructure sizing | **Ready** (CX42 for 200 users) |
 | Roadmap and phases | **Ready** (12 months, 4 phases) |
 | Database schema | **Not started** — first coding task |
 | API contract | **Not started** — second coding task |

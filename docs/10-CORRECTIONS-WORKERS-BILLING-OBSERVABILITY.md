@@ -82,7 +82,7 @@ Return HTML to buyer (~80ms total on cache miss, ~30ms on cache hit)
 | Catalog PWA (Nuxt SSR) | **Cloudflare Workers** | Edge rendering, fast for buyers globally |
 | Dashboard PWA (Nuxt SSR) | **Hetzner** (your existing infra) | Needs direct DB access, agents, workers |
 | Hono API | **Hetzner** | Direct PostgreSQL/Redis access |
-| PostgreSQL, Redis, MinIO | **Hetzner** | Data stays on your server |
+| PostgreSQL, Redis, Cloudflare R2 | **Hetzner** | Data stays on your server |
 | Agno Agents | **Hetzner** | Need DB access + LLM API calls |
 | Prefect | **Hetzner** | Scheduled jobs need DB access |
 
@@ -176,7 +176,7 @@ For the API, database, and infrastructure (not agents), we need basic monitoring
 - **UptimeRobot** (free): checks if the API is responding every 5 minutes
 - **Docker logs**: `docker compose logs -f` for debugging
 - **PostgreSQL `pg_stat_statements`**: identifies slow queries
-- **Caddy access logs**: HTTP request logs
+- **Traefik access logs (via Dokploy)**: HTTP request logs
 
 This is minimal and sufficient for the first 1,000 users. No Grafana, no Prometheus, no OpenTelemetry stack needed at this scale. AgentOS covers the agent layer, basic tools cover the rest.
 
@@ -186,7 +186,7 @@ This is minimal and sufficient for the first 1,000 users. No Grafana, no Prometh
 
 ### How Aurora and Docflow Handle It
 
-Based on the infrastructure review, Aurora and Docflow are deployed on the same Hetzner infrastructure via Coolify, using the shared PostgreSQL/Redis/MinIO data plane. They are **direct-to-customer products**, not SaaS platforms with subscription billing. They don't use Stripe because their customers (Venezuelan businesses) pay via Pago Movil and Zelle — the same payment methods Nova's end-customers use.
+Based on the infrastructure review, Aurora and Docflow are deployed on the same Hetzner infrastructure via Coolify, using the shared PostgreSQL/Redis/Cloudflare R2 data plane. They are **direct-to-customer products**, not SaaS platforms with subscription billing. They don't use Stripe because their customers (Venezuelan businesses) pay via Pago Movil and Zelle — the same payment methods Nova's end-customers use.
 
 ### How Nova Should Handle Billing
 
@@ -231,7 +231,7 @@ CREATE TABLE subscription_payments (
     subscription_id UUID REFERENCES subscriptions(id),
     amount DECIMAL(12,2) NOT NULL,
     method VARCHAR(50) NOT NULL,
-    screenshot_url TEXT,                  -- MinIO path
+    screenshot_url TEXT,                  -- Cloudflare R2 path
     reference VARCHAR(100),
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'verified', 'rejected'
     verified_at TIMESTAMPTZ,
@@ -284,7 +284,7 @@ Based on these clarifications, remove from all planning documents:
 
 | Service | Old Cost | New Cost | Change |
 |---|---|---|---|
-| Hetzner CX32 | $8.49 | $8.49 | — |
+| Hetzner CX42 | $8.49 | $8.49 | — |
 | Backups | $1.70 | $1.70 | — |
 | Block Storage | $2.60 | $2.60 | — |
 | Clerk | Free | Free | — |
@@ -297,6 +297,6 @@ Based on these clarifications, remove from all planning documents:
 | Grafana Cloud | $0 | **Removed** | -$0 (was planned for future) |
 | Cloudflare Workers | Free | Free | — |
 | Domain | $1.25 | $1.25 | — |
-| **Total** | **$59.04** | **$59.04** | No change (removed items were future costs) |
+| **Total** | **$71.39** | **$71.39** | Updated for CX42 + proper isolation |
 
 The immediate cost doesn't change because the removed items were all future-phase additions. But the architecture is now simpler and the operational burden is lower.

@@ -10,7 +10,7 @@
 
 Document 11 was wrong. It placed Nova on the existing 3-plane Hetzner architecture (Control Plane, Data Plane, App Plane A) shared with Whabi, Docflow, and Aurora. That contradicts the core design principle: **Nova is a composable, standalone product with its own infrastructure.** It does not share servers, databases, or deployment pipelines with the other projects.
 
-The existing platform-infra already has `nova.ts` with connection strings pointing to the shared Data Plane. That file was created as a placeholder. **Nova will NOT use those shared resources for production.** Nova gets its own server, its own PostgreSQL, its own Redis, its own MinIO.
+The existing platform-infra already has `nova.ts` with connection strings pointing to the shared Data Plane. That file was created as a placeholder. **Nova will NOT use those shared resources for production.** Nova gets its own server, its own PostgreSQL, its own Redis, its own Cloudflare R2.
 
 ---
 
@@ -25,23 +25,23 @@ The existing platform-infra already has `nova.ts` with connection strings pointi
 
 ## 2. Nova's Infrastructure
 
-### One Server: Hetzner CX32
+### One Server: Hetzner CX42
 
 | Component | Spec | Cost |
 |---|---|---|
-| **Hetzner CX32** | 4 vCPU, 8 GB RAM, 80 GB NVMe | $8.49/mo |
+| **Hetzner CX42** | 8 vCPU, 16 GB RAM, 160 GB NVMe | $16.49/mo |
 | **Backups** | Automated (20% of server cost) | $1.70/mo |
 | **Block Storage** | 50 GB (product images, imports) | $2.60/mo |
-| **Total** | | **$12.79/mo** |
+| **Total** | | **$24.99/mo** |
 
 Location: Ashburn (ash) — lowest latency to Venezuela (~60ms).
 
 ### What Runs on It
 
-**5 containers**, managed by Coolify (a separate Coolify instance on this server, or Docker Compose directly):
+**8 containers**, managed by Dokploy (a separate Dokploy instance on this server, or Docker Compose directly):
 
 ```
-Nova CX32 (Ashburn)
+Nova CX42 (Ashburn)
 ├── nova-app          (Hono API + BullMQ workers + Agno agents)  ~2.5 GB
 ├── nova-dashboard    (Nuxt 3 SSR, merchant PWA)                 ~512 MB
 ├── postgres          (PostgreSQL 16 + pgvector, DB: nova)        ~2 GB
@@ -50,30 +50,30 @@ Nova CX32 (Ashburn)
                                                           Total: ~5.6 GB / 8 GB
 ```
 
-MinIO is NOT a separate container. Product images and uploads go to **Cloudflare R2** (S3-compatible, $0.015/GB/mo, free egress) or to the block storage volume served directly by Caddy. This saves ~512 MB of RAM and simplifies the stack.
+Cloudflare R2 is NOT a separate container. Product images and uploads go to **Cloudflare R2** (S3-compatible, $0.015/GB/mo, free egress) or to the block storage volume served directly by Caddy. This saves ~512 MB of RAM and simplifies the stack.
 
-### Deployment: Coolify or Docker Compose?
+### Deployment: Dokploy or Docker Compose?
 
-**Option A: Coolify on the same server (recommended)**
+**Option A: Dokploy on the same server (recommended)**
 
-Install Coolify on the CX32 itself. It's lightweight (~300 MB RAM). You get:
-- Git-based auto-deploy (push to main → Coolify builds and restarts)
+Install Dokploy on the CX42 itself. It's lightweight (~300 MB RAM). You get:
+- Git-based auto-deploy (push to main → Dokploy builds and restarts)
 - SSL via built-in Traefik
 - Environment variable management
 - Container monitoring dashboard
 - Same workflow you already know from platform-infra
 
-This is the simplest path. One server, Coolify manages everything on it.
+This is the simplest path. One server, Dokploy manages everything on it.
 
 **Option B: Docker Compose + GitHub Actions**
 
-If you don't want Coolify overhead on the same server:
+If you don't want Dokploy overhead on the same server:
 - Docker Compose manages the containers
-- Caddy handles SSL (auto Let's Encrypt)
+- Traefik (via Dokploy) handles SSL
 - GitHub Actions builds Docker images, pushes to GitHub Container Registry, SSHs into the server, pulls and restarts
 - No web dashboard for container management (CLI only)
 
-**Recommendation: Option A (Coolify).** The 300 MB overhead is worth the deployment convenience. You already know Coolify. Don't introduce a new deployment workflow for Nova.
+**Recommendation: Option A (Dokploy).** The 300 MB overhead is worth the deployment convenience. You already know Dokploy. Don't introduce a new deployment workflow for Nova.
 
 ### Catalog: Cloudflare Workers (Unchanged)
 
@@ -91,8 +91,8 @@ Buyer → Cloudflare Worker (edge, ~30ms) → Nova API (Hetzner Ashburn) → Pos
 NOVA INFRASTRUCTURE (standalone, NOT shared with platform-infra)
 ═══════════════════════════════════════════════════════════════
 
-Hetzner CX32 (Ashburn, $12.79/mo)
-├── Coolify (deployment management + Traefik for SSL)
+Hetzner CX42 (Ashburn, $24.99/mo)
+├── Dokploy (deployment management + Traefik for SSL)
 ├── nova-app container
 │   ├── Hono 4.x (API framework)
 │   ├── Drizzle ORM (PostgreSQL access)
@@ -111,7 +111,7 @@ Hetzner CX32 (Ashburn, $12.79/mo)
 ├── Redis 7 container
 │   ├── Cache (sessions, hot data)
 │   └── BullMQ queues (jobs)
-└── Caddy container (if not using Coolify's Traefik)
+└── Caddy container (if not using Dokploy's Traefik)
 
 Cloudflare (free-$5/mo)
 ├── Workers: nova-catalog (Nuxt 3 SSR at edge)
@@ -145,10 +145,10 @@ If in the future Nova needs to share data with Aurora or Docflow (e.g., a mercha
 | Day | Task |
 |---|---|
 | **1** | Founder decisions (name, domain). Create accounts (Cloudflare, Clerk, Resend, OpenAI, Groq, Photoroom, Google Cloud). |
-| **2** | Provision Hetzner CX32 in Ashburn. Install Coolify. Configure domain + DNS in Cloudflare. Attach 50 GB block storage. |
+| **2** | Provision Hetzner CX42 in Ashburn. Install Dokploy. Configure domain + DNS in Cloudflare. Attach 50 GB block storage. |
 | **3** | Initialize monorepo (pnpm + turborepo). Scaffold apps (api, dashboard, catalog) + packages (shared, ui). Configure linting. |
 | **4** | Write Drizzle schema. Run migrations on Nova's PostgreSQL. Integrate Clerk auth. Write RLS tests. |
-| **5** | Configure Coolify services (nova-app, nova-dashboard). Deploy catalog to Cloudflare Workers. First end-to-end test. |
+| **5** | Configure Dokploy services (nova-app, nova-dashboard). Deploy catalog to Cloudflare Workers. First end-to-end test. |
 | **6** | Start MVP coding: Product CRUD + image upload + Photoroom integration. |
 
 ---
@@ -162,7 +162,7 @@ If in the future Nova needs to share data with Aurora or Docflow (e.g., a mercha
 | 3 product tiers | Complete |
 | LLM model selection + costs | Complete |
 | Standalone infrastructure | **Corrected in this document** |
-| Deployment via Coolify | Complete |
+| Deployment via Dokploy | Complete |
 | Catalog on Cloudflare Workers | Complete |
 | Billing via Pago Movil/Zelle | Complete |
 | Observability via AgentOS | Complete |
