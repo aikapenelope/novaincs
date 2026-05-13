@@ -102,7 +102,7 @@ All tiers run on one codebase. Feature flags control access.
 | [08 — Feature Classification & LLM Costs](docs/08-FEATURE-CLASSIFICATION-LLM-COSTS.md) | All 89 features classified (73 deterministic, 13 LLM, 3 external API), model selection (GPT-5 Mini workhorse, Groq for speed), cost per feature, $0.61/merchant/month total AI cost |
 | [09 — Catalog Edge & Pre-Dev Checklist](docs/09-CATALOG-EDGE-DEPLOYMENT-PREDEV-CHECKLIST.md) | SvelteKit vs Nuxt 3 analysis (stay Nuxt, deploy to Cloudflare Workers), split deployment, pre-development checklist, 7-day zero-to-code timeline |
 | [10 — Corrections: Workers, Billing, Observability](docs/10-CORRECTIONS-WORKERS-BILLING-OBSERVABILITY.md) | Cloudflare Workers architecture, billing via Pago Movil/Zelle (no Stripe), AgentOS built-in observability |
-| [11 — Standalone Infrastructure](docs/11-DEFINITIVE-STACK-COOLIFY-DEPLOYMENT.md) | Nova is standalone (not shared with platform-infra), own server, own databases |
+| [11 — Standalone Infrastructure](docs/11-DEFINITIVE-STACK-COOLIFY-DEPLOYMENT.md) | Nova runs on its own VPS, own databases, own deployment. Scaling path to 100K+ merchants |
 | [12 — Complete Stack (DEFINITIVE)](docs/12-COMPLETE-STACK-EXPLAINED.md) | Production architecture: 8 containers, 3 PostgreSQL instances, Dokploy deployment, full docker-compose.yml, memory budget, failure scenarios, $71.39/mo total |
 
 ---
