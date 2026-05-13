@@ -254,14 +254,14 @@ This is order and payment data. It must be consistent and durable — losing a p
 
 **Ingestion path**:
 ```
-Event Source -> Hono API Gateway -> Temporal Workflow -> PostgreSQL (within transaction)
+Event Source -> Hono API Gateway -> Prefect Flow -> PostgreSQL (within transaction)
                                                      -> Redis (cache invalidation)
                                                      -> Event Bus (notify agents)
 ```
 
-Transactional data goes through Temporal workflows, not BullMQ. This is because:
-- Temporal guarantees exactly-once execution
-- If the server crashes after writing the order but before updating inventory, Temporal replays and completes both
+Transactional data goes through Prefect flows, not BullMQ. This is because:
+- Prefect handles retries and error recovery
+- If a task fails, Prefect retries it automatically with configurable backoff
 - The Saga pattern handles compensation: if payment verification fails, the order status rolls back automatically
 
 #### Stream 3: Imported Data (Batch, One-Time or Periodic)
@@ -460,7 +460,7 @@ For issues, the merchant sees a simple editor:
 
 **Step 5: Import to Production**
 
-Once approved, the import runs as a Temporal workflow:
+Once approved, the import runs as a Prefect flow:
 1. Write all products to a staging table (atomic transaction)
 2. Validate foreign keys and constraints
 3. If all pass: promote staging to production (atomic swap)
@@ -574,7 +574,7 @@ Each loop runs as a combination of:
 
 1. **Real-time triggers** (Redis pub/sub): For events that need immediate response (cart abandonment, payment received)
 2. **Scheduled jobs** (BullMQ cron): For periodic analysis (RFM recalculation every hour, daily briefing)
-3. **Temporal workflows**: For multi-step actions (send campaign -> wait for responses -> analyze results -> adjust)
+3. **Prefect flows**: For multi-step actions (send campaign -> wait for responses -> analyze results -> adjust)
 
 The Agno agents consume the outputs of these loops and decide which actions to surface to the merchant and which to execute autonomously (based on merchant's automation preferences).
 
@@ -759,14 +759,14 @@ HubSpot's CRM is free. The value is in the intelligence and automation layers on
 
 **Nova's adaptation**: The Micro-CRM is included in all plans (even free). The AI agents and automation are what differentiate paid tiers. This ensures every merchant builds their customer database in Nova, creating switching costs even on the free plan.
 
-#### Pattern 4: Temporal's Durable Execution for Critical Paths
+#### Pattern 4: Workflow Orchestration for Critical Paths
 
-Companies like Stripe, Netflix, and Coinbase use Temporal for workflows that cannot fail:
+Companies like Stripe, Netflix, and Coinbase use workflow engines for processes that cannot fail:
 - Payment processing
 - Order fulfillment
 - Subscription billing
 
-**Nova's adaptation**: Every workflow that touches money (payment verification, order completion, campaign sending) runs through Temporal. This is not optional — it's a production requirement. A merchant who loses a payment record loses trust permanently.
+**Nova's adaptation**: Critical workflows (payment verification, order completion, campaign sending) run through Prefect with retry policies and error handling. BullMQ handles real-time background jobs. Together they ensure no business operation is silently lost.
 
 #### Pattern 5: Clerk's Auth + Multi-Tenancy
 
@@ -1023,7 +1023,7 @@ Everything else — CRM, analytics, AI agents, financial services — grows from
 | **RLS** | Row-Level Security — PostgreSQL feature for tenant isolation |
 | **MCP** | Model Context Protocol — universal standard for AI tool integration |
 | **Agno** | Open-source AI agent framework with production runtime (AgentOS) |
-| **Temporal** | Durable workflow execution engine for critical business processes |
+| **Prefect** | Workflow orchestration for scheduled jobs and critical processes |
 | **Drizzle** | TypeScript-first SQL ORM with zero dependencies |
 | **Hono** | Ultra-lightweight TypeScript web framework (14kb) |
 | **BullMQ** | Redis-based job queue for Node.js |

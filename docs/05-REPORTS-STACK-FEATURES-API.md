@@ -126,7 +126,7 @@ The PDF is generated server-side using a headless renderer (Puppeteer or @react-
 ### 1.4 Implementation
 
 ```
-Temporal Cron Workflow (1st of month, 8am per timezone)
+Prefect Cron Flow (1st of month, 8am per timezone)
   → Finance Agent: query all financial data for the month
   → Content Agent: generate recommendations based on patterns
   → PDF Generator: render HTML template → PDF (Puppeteer)
@@ -136,7 +136,7 @@ Temporal Cron Workflow (1st of month, 8am per timezone)
   → (Optional) WhatsApp: send notification "Tu resumen esta listo"
 ```
 
-The Temporal workflow ensures that if any step fails (e.g., Resend is down), it retries automatically. The merchant always gets their report.
+The Prefect flow ensures that if any step fails (e.g., Resend is down), it retries automatically. The merchant always gets their report.
 
 ### 1.5 What Else Is Needed for Reports
 

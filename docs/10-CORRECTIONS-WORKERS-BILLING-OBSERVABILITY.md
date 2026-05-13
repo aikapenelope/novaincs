@@ -80,7 +80,7 @@ Return HTML to buyer (~80ms total on cache miss, ~30ms on cache hit)
 | Component | Where It Runs | Why |
 |---|---|---|
 | Catalog PWA (Nuxt SSR) | **Cloudflare Workers** | Edge rendering, fast for buyers globally |
-| Dashboard PWA (Nuxt SSR) | **Hetzner** (your existing infra) | Needs direct DB access, agents, workers |
+| Dashboard PWA (Nuxt SSR) | **Hetzner CX42** (Nova's own server) | Needs direct DB access, agents, workers |
 | Hono API | **Hetzner** | Direct PostgreSQL/Redis access |
 | PostgreSQL, Redis, Cloudflare R2 | **Hetzner** | Data stays on your server |
 | Agno Agents | **Hetzner** | Need DB access + LLM API calls |
@@ -186,7 +186,7 @@ This is minimal and sufficient for the first 1,000 users. No Grafana, no Prometh
 
 ### How Aurora and Docflow Handle It
 
-Based on the infrastructure review, Aurora and Docflow are deployed on the same Hetzner infrastructure via Coolify, using the shared PostgreSQL/Redis/Cloudflare R2 data plane. They are **direct-to-customer products**, not SaaS platforms with subscription billing. They don't use Stripe because their customers (Venezuelan businesses) pay via Pago Movil and Zelle — the same payment methods Nova's end-customers use.
+Nova's merchants pay for their Nova subscription the same way their customers pay for products: **Pago Movil and Zelle**. This is the standard payment pattern for Venezuelan SaaS products.
 
 ### How Nova Should Handle Billing
 
