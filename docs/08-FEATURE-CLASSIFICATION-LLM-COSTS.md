@@ -302,7 +302,7 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 |---|---|---|---|---|
 | 1 | **Product name** | Nova? NovaIncs? Other? | Domain, branding, Meta app name | Founder |
 | 2 | **Domain** | nova.app? novaincs.com? Other? | SSL, email, catalog URLs | Founder |
-| 3 | **Hetzner datacenter location** | Helsinki (hel1) vs Ashburn (ash) vs Falkenstein (fsn1) | Latency to Venezuela. Ashburn (US East) likely best for LATAM. | Technical + founder |
+| 3 | **Hetzner datacenter location** | Helsinki (hel1) vs Ashburn (ash) vs Falkenstein (fsn1) | Helsinki (hel1) — CX43 available at ~€16/mo. Catalog on Cloudflare Workers edge mitigates latency. | Technical + founder |
 | 4 | **Billing provider** | Stripe (international) vs local VZ payment for subscriptions | How merchants pay for Nova itself | Founder + legal |
 | 5 | **BCV rate source** | Which API for official exchange rate? BCV scraping? Third-party? | Accuracy of Bs pricing | Technical |
 | 6 | **WhatsApp approach for MVP** | Deep links only (free) vs Cloud API from day 1 (cost) | Feature scope of MVP | Founder |
@@ -326,7 +326,7 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 
 | # | Task | Time Estimate | Blocks |
 |---|---|---|---|
-| 1 | Hetzner account + CX42 provisioned | 1 hour | Everything |
+| 1 | Hetzner account + CX43 provisioned | 1 hour | Everything |
 | 2 | Domain purchased + DNS configured | 1 hour | SSL, email, catalog URLs |
 | 3 | Clerk project created + configured | 30 min | Auth |
 | 4 | Resend account + domain verified | 1 hour | Email delivery |
@@ -348,7 +348,7 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 | Buyer persona and pain points | **Ready** |
 | Business model and pricing | **Ready** (3 tiers) |
 | LLM model selection and costs | **Ready** (this document) |
-| Infrastructure sizing | **Ready** (CX42 for 200 users) |
+| Infrastructure sizing | **Ready** (CX43 for 200 users) |
 | Roadmap and phases | **Ready** (12 months, 4 phases) |
 | Database schema | **Not started** — first coding task |
 | API contract | **Not started** — second coding task |

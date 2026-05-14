@@ -71,7 +71,7 @@ Data:         PostgreSQL 16 + pgvector (business) | PostgreSQL (agno) | PostgreS
 | Integrations | MCP (Model Context Protocol) |
 | Email | Resend |
 | Deployment | Dokploy (Traefik for SSL/routing) |
-| Hosting | Hetzner Cloud CX42 (8 vCPU, 16 GB RAM) |
+| Hosting | Hetzner Cloud CX43 (8 vCPU, 16 GB RAM) — Helsinki |
 | Catalog Edge | Cloudflare Workers (SSR at edge, ~30ms TTFB) |
 
 ---
@@ -111,12 +111,11 @@ All tiers run on one codebase. Feature flags control access.
 
 | Component | Spec | Cost |
 |---|---|---|
-| Hetzner CX42 | 8 vCPU, 16 GB RAM, 160 GB NVMe (Ashburn) | $16.49/mo |
-| Backups | Automated | $3.30/mo |
-| Block Storage | 100 GB (PostgreSQL data) | $5.20/mo |
+| Hetzner CX43 | 8 vCPU, 16 GB RAM, 160 GB NVMe (Helsinki) | ~€16/mo |
+| Backups | Automated | ~€3/mo |
 | Cloudflare | Workers + R2 + DNS | $0 (free tier) |
 | External services | Clerk, Resend, Photoroom, OpenAI, Groq | ~$46/mo |
-| **Total** | | **$71.39/mo** |
+| **Total** | | **~€65/mo** |
 
 Revenue at 200 users: ~$1,340/mo. Margin: 94.7%.
 
@@ -148,8 +147,8 @@ Month 10-12   Platform (Wakit, public API, MCP, analytics, voice)
 | Dokploy over Coolify | 350MB RAM vs 700MB idle | Same features (git deploy, Traefik, dashboard). Half the resource overhead. |
 | Cloudflare R2 over MinIO | No container needed, free egress | Saves ~512MB RAM. $0.015/GB/mo. S3-compatible API. |
 | 3 separate PostgreSQL | Business, agents, workflows | Each service owns its data. No cross-contamination. Independent backups. |
-| CX42 over CX32 | 16 GB RAM for proper isolation | 8 containers need headroom. $8 more buys robustness. |
-| Hetzner over AWS | 5x cheaper, 20TB bandwidth | CX42 at $16.49/mo handles what costs $80+ elsewhere. |
+| CX43 over CX32 | 16 GB RAM for proper isolation | 8 containers need headroom. $8 more buys robustness. |
+| Hetzner over AWS | 5x cheaper, 20TB bandwidth | CX43 at $16.49/mo handles what costs $80+ elsewhere. |
 | Feature flags over code forks | One codebase, three products | Merchant upgrades plan -> features appear instantly. No separate deployments. |
 
 ---

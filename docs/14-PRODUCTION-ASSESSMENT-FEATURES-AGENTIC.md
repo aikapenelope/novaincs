@@ -18,7 +18,7 @@ There is no application code yet — the repo contains 13 planning documents + R
 | **Data safety** | "We'll fix it later" | Data loss is unacceptable | 3 separate PostgreSQL instances with daily backups. RLS prevents cross-tenant leaks. |
 | **Observability** | Console.log | Structured tracing, metrics, audit logs | AgentOS built-in OpenTelemetry. UptimeRobot for infrastructure. |
 | **Security** | Basic auth | Defense in depth | 3-layer tenant isolation (API + ORM + RLS). Clerk JWT. Firewall. Encrypted secrets. |
-| **Scalability** | "Works for 10 users" | Designed for 10x current load | CX42 (16GB) uses 7.2GB. 8.8GB headroom. Partitioned events table. Edge catalog. |
+| **Scalability** | "Works for 10 users" | Designed for 10x current load | CX43 (16GB) uses 7.2GB. 8.8GB headroom. Partitioned events table. Edge catalog. |
 | **Deployment** | Manual SSH | Automated, reproducible | Dokploy git-based auto-deploy. Docker Compose with health checks and resource limits. |
 | **Testing** | Manual | Automated unit, integration, E2E, security | Vitest + Playwright + RLS security tests defined in pre-dev checklist. |
 | **Separation of concerns** | Everything in one file | Each service owns its domain | API, dashboard, agents, workflows, 3 databases — each in its own container. |

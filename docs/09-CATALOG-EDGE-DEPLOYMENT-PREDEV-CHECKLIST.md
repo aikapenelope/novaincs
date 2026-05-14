@@ -54,7 +54,7 @@ The catalog PWA is a **read-heavy, low-interactivity** application. Customers br
 
 ```
 BUYER CATALOG (Nuxt 3)          MERCHANT DASHBOARD (Nuxt 3)
-Deployed to: Cloudflare Workers  Deployed to: Hetzner CX42
+Deployed to: Cloudflare Workers  Deployed to: Hetzner CX43
 Why: Edge SSR, ~30ms TTFB        Why: Needs direct DB access,
      globally, $5/mo                   agents, background jobs
      (Workers free tier: 100K     
@@ -63,11 +63,11 @@ Why: Edge SSR, ~30ms TTFB        Why: Needs direct DB access,
          │ API calls                    │ Direct DB access
          ▼                              ▼
     Nova API (Hono)              Nova API (Hono)
-    on Hetzner CX42              on Hetzner CX42
+    on Hetzner CX43              on Hetzner CX43
          │                              │
          ▼                              ▼
     PostgreSQL + Redis           PostgreSQL + Redis
-    on Hetzner CX42              on Hetzner CX42
+    on Hetzner CX43              on Hetzner CX43
 ```
 
 **The catalog PWA runs on Cloudflare Workers.** It's a separate Nuxt 3 app that:
@@ -130,7 +130,7 @@ These are decisions only the founder can make. They block everything else.
 |---|---|---|---|---|---|
 | D1 | **Product name** | Nova, NovaIncs, other | Nova (short, memorable, .app domain available) | Domain, branding, Meta app, legal | 1 day |
 | D2 | **Domain** | nova.app, novaincs.com, other | nova.app ($14/year from Google Domains) | SSL, email, catalog URLs, Clerk config | 1 day |
-| D3 | **Hetzner datacenter** | Helsinki (hel1), Ashburn (ash), Falkenstein (fsn1) | Ashburn (ash) — lowest latency to Venezuela (~60ms vs ~150ms from Helsinki) | Server provisioning | 1 day |
+| D3 | **Hetzner datacenter** | Helsinki (hel1), Ashburn (ash), Falkenstein (fsn1) | Helsinki (hel1) — CX43 available, ~€16/mo. Catalog runs on Cloudflare Workers edge (~30ms to Venezuela) so server latency only affects dashboard. | Server provisioning | 1 day |
 | D4 | **How merchants pay for Nova** | Stripe (international cards), crypto, manual bank transfer | Stripe for international cards + manual Pago Movil/Zelle for VZ merchants | Billing system | 1 day |
 | D5 | **Free tier limits** | Various | 20 products, 50 orders/mo, 10 AI images/mo | Feature flag config | 1 day |
 | D6 | **WhatsApp for MVP** | Deep links only (free) vs Cloud API ($) | Deep links only for MVP. Cloud API in Phase 3. | WhatsApp integration scope | 1 day |
@@ -144,7 +144,7 @@ These are decisions only the founder can make. They block everything else.
 
 | # | Account | What's Needed | Cost | Time | Blocks |
 |---|---|---|---|---|---|
-| A1 | **Hetzner Cloud** | Create account, verify identity, provision CX42 in Ashburn | $16.49/mo | 1-2 hours (may need ID verification) | All deployment |
+| A1 | **Hetzner Cloud** | Create account, verify identity, provision CX43 in Helsinki | ~€16/mo | 1-2 hours (may need ID verification) | All deployment |
 | A2 | **Cloudflare** | Create account, add domain, configure DNS, enable Workers | Free (free tier) | 30 min | Catalog deployment, SSL |
 | A3 | **Clerk** | Create project, configure phone auth + Google login, set redirect URLs | Free (10K MAU) | 30 min | Auth |
 | A4 | **Resend** | Create account, verify domain (SPF/DKIM/DMARC), create API key | Free (3K emails/mo) | 1 hour (DNS propagation) | Email reports |
@@ -193,11 +193,11 @@ These are decisions only the founder can make. They block everything else.
 
 | # | Task | Description | Time |
 |---|---|---|---|
-| H1 | **Provision CX42** | 8 vCPU, 16 GB RAM, 160 GB NVMe, Ashburn datacenter | 5 min |
+| H1 | **Provision CX43** | 8 vCPU, 16 GB RAM, 160 GB NVMe, Helsinki datacenter | 5 min |
 | H2 | **SSH key setup** | Generate and add SSH key for secure access | 10 min |
 | H3 | **Firewall rules** | Allow 80 (HTTP), 443 (HTTPS), 22 (SSH). Block everything else. | 10 min |
 | H4 | **Docker + Docker Compose** | Install Docker Engine and Docker Compose on the server | 15 min |
-| H5 | **Block storage** | Attach 100 GB volume for PostgreSQL data, mount at /mnt/storage | 10 min |
+| H5 | **Data directories** | Create /var/lib/nova/pg-nova, pg-agno, backups on server disk | 5 min |
 | H6 | **Automated backups** | Enable Hetzner automated backups ($1.70/mo) | 5 min |
 | H7 | **Dokploy installation** | Install Dokploy (includes Traefik for SSL/routing) | 15 min |
 | H8 | **Docker Compose (production)** | Production docker-compose.yml with 8 containers, resource limits, restart policies, health checks | 1 hour |

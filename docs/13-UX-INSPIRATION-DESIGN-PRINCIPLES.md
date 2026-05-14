@@ -206,7 +206,7 @@ No screen should make the merchant think "what do I do here?" Every screen has O
 - Total: ~4 hours
 
 **Day 2 — Server + Deployment**
-- Provision Hetzner CX42 in Ashburn
+- Provision Hetzner CX43 in Helsinki
 - Install Dokploy
 - Configure domain + DNS in Cloudflare
 - Attach 100 GB block storage

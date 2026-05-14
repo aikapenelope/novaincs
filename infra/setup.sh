@@ -9,14 +9,13 @@
 #   1. Updates packages
 #   2. Installs Docker + Docker Compose
 #   3. Installs Dokploy (includes Traefik for SSL/routing)
-#   4. Creates data directories on block storage (if mounted)
+#   4. Creates data directories on server disk
 #   5. Prints next steps
 #
 # Requirements:
 #   - Ubuntu 24.04 LTS
 #   - Root access
 #   - Ports 22, 80, 443, 3000 free
-#   - (Optional) Block storage mounted at /mnt/storage
 
 set -euo pipefail
 
@@ -55,16 +54,8 @@ else
     log "Docker installed: $(docker --version)"
 fi
 
-# --- Block storage setup ---
-STORAGE_DIR="/mnt/storage"
-
-if mountpoint -q "$STORAGE_DIR" 2>/dev/null; then
-    log "Block storage detected at $STORAGE_DIR"
-else
-    warn "No block storage mounted at $STORAGE_DIR"
-    warn "PostgreSQL data will use the server disk instead."
-    STORAGE_DIR="/var/lib/nova"
-fi
+# --- Data directories ---
+STORAGE_DIR="/var/lib/nova"
 
 log "Creating data directories at $STORAGE_DIR..."
 mkdir -p "$STORAGE_DIR/pg-nova"

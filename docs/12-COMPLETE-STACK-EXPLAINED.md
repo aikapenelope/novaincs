@@ -24,9 +24,9 @@ This document corrects all of that. Each service gets its own container. Each st
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Hetzner CX42                              │
+│                    Hetzner CX43                              │
 │              8 vCPU, 16 GB RAM, 160 GB NVMe                 │
-│                    Ashburn (ash)                              │
+│                    Helsinki (hel1)                            │
 │                                                              │
 │  ┌─────────────────┐  ┌─────────────────┐                   │
 │  │  nova-api       │  │  nova-dashboard  │                   │
@@ -86,11 +86,11 @@ This document corrects all of that. Each service gets its own container. Each st
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Why CX42 Instead of CX32
+### Why CX43 Instead of CX32
 
-The CX32 (8 GB) was tight with everything crammed into one process. With proper isolation (8 containers, 3 PostgreSQL instances), 8 GB is not enough. The CX42 costs $16.49/month (vs $8.49) and gives:
+The CX32 (8 GB) was tight with everything crammed into one process. With proper isolation (8 containers, 3 PostgreSQL instances), 8 GB is not enough. The CX43 costs $16.49/month (vs $8.49) and gives:
 
-| Spec | CX32 | CX42 |
+| Spec | CX32 | CX43 |
 |---|---|---|
 | vCPU | 4 | 8 |
 | RAM | 8 GB | 16 GB |
@@ -235,18 +235,18 @@ Container 5: pg-nova
 ├── Image: pgvector/pgvector:pg16
 ├── Port: 5432
 ├── RAM: ~2 GB (shared_buffers=768MB, effective_cache_size=1.5GB)
-├── Data: /mnt/storage/pg-nova (block storage)
+├── Data: /var/lib/nova/pg-nova (server disk, covered by Hetzner backups)
 ├── Extensions: vector, uuid-ossp
 ├── RLS: enabled (multi-tenant isolation)
-├── Backup: daily pg_dump → /mnt/storage/backups/nova
+├── Backup: daily pg_dump → /var/lib/nova/backups/nova
 └── Contains: tenants, products, customers, orders, payments,
               inventory, events, subscriptions — ALL business data
 
 Container 6: pg-agno
-├── Image: pgvector/pgvector:pg16
+├── Image: agnohq/pgvector:16 (official Agno image)
 ├── Port: 5433
 ├── RAM: ~512 MB (shared_buffers=128MB)
-├── Data: /mnt/storage/pg-agno (block storage)
+├── Data: /var/lib/nova/pg-agno (server disk, covered by Hetzner backups)
 ├── Extensions: vector
 ├── Backup: weekly pg_dump (less critical, can be regenerated)
 └── Contains: agent sessions, memories, traces, knowledge vectors
@@ -309,9 +309,8 @@ DB 2 = Prefect) is the standard pattern.
 
 | Component | Monthly Cost |
 |---|---|
-| Hetzner CX42 (8 vCPU, 16 GB) | $16.49 |
-| Hetzner backups | $3.30 |
-| Hetzner block storage (100 GB) | $5.20 |
+| Hetzner CX43 (8 vCPU, 16 GB) — Helsinki | ~€16 |
+| Hetzner backups | ~€3 |
 | Cloudflare (Workers + R2 + DNS) | $0 |
 | Clerk | $0 |
 | Resend | $0 |
@@ -320,9 +319,9 @@ DB 2 = Prefect) is the standard pattern.
 | Photoroom | $40 |
 | Cloudflare R2 (~10 GB) | $0.15 |
 | Domain | $1.25 |
-| **Total** | **$71.39/month** |
+| **Total** | **~€65/month** |
 
-$12 more than the CX32 plan. At $15/merchant, you need 5 paying merchants to cover the entire infrastructure. Revenue at 200 merchants: ~$1,340/month. Margin: 94.7%.
+At $15/merchant, you need 5 paying merchants to cover the entire infrastructure. Revenue at 200 merchants: ~$1,340/month. Margin: ~95%.
 
 ---
 
@@ -421,7 +420,7 @@ services:
       POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
       POSTGRES_DB: nova
     volumes:
-      - /mnt/storage/pg-nova:/var/lib/postgresql/data
+      - /var/lib/nova/pg-nova:/var/lib/postgresql/data
     command:
       - "postgres"
       - "-c" 
@@ -443,7 +442,7 @@ services:
     networks: [nova-net]
 
   pg-agno:
-    image: pgvector/pgvector:pg16
+    image: agnohq/pgvector:16
     container_name: pg-agno
     restart: unless-stopped
     ports: ["5433:5432"]
@@ -452,7 +451,7 @@ services:
       POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
       POSTGRES_DB: agno
     volumes:
-      - /mnt/storage/pg-agno:/var/lib/postgresql/data
+      - /var/lib/nova/pg-agno:/var/lib/postgresql/data
     command:
       - "postgres"
       - "-c"
