@@ -10,6 +10,7 @@ export type AppEnv = {
   Variables: {
     userId?: string;
     tenantId?: string;
+    memberRole?: string;
   };
 };
 

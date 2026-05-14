@@ -98,7 +98,7 @@ tenantRoutes.get("/me", async (c) => {
         id: tenants.id,
         name: tenants.name,
         slug: tenants.slug,
-        plan: tenants.plan,
+        planTier: tenants.planTier,
         status: tenants.status,
         createdAt: tenants.createdAt,
       },
