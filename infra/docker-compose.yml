@@ -1,0 +1,200 @@
+# Nova — Production Docker Compose
+# 8 containers, 3 PostgreSQL instances, 1 Redis
+# See docs/12-COMPLETE-STACK-EXPLAINED.md for architecture details
+#
+# Usage:
+#   cp .env.example .env   # fill in secrets
+#   docker compose up -d
+
+services:
+  # === APPLICATION SERVICES ===
+
+  nova-api:
+    build: ../apps/api
+    container_name: nova-api
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgresql://nova:${PG_NOVA_PASSWORD}@pg-nova:5432/nova
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      AGENTS_URL: http://nova-agents:8000
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PHOTOROOM_API_KEY: ${PHOTOROOM_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    depends_on:
+      pg-nova: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 1G }
+    networks: [nova-net]
+
+  nova-dashboard:
+    build: ../apps/dashboard
+    container_name: nova-dashboard
+    restart: unless-stopped
+    ports: ["3001:3000"]
+    environment:
+      NUXT_PUBLIC_API_URL: http://nova-api:3000
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  nova-agents:
+    build: ../agents
+    container_name: nova-agents
+    restart: unless-stopped
+    ports: ["8000:8000"]
+    environment:
+      AGNO_DB_URL: postgresql://agno:${PG_AGNO_PASSWORD}@pg-agno:5432/agno
+      NOVA_DB_URL: postgresql://nova_readonly:${PG_NOVA_RO_PASSWORD}@pg-nova:5432/nova
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on:
+      pg-agno: { condition: service_healthy }
+      pg-nova: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 1G }
+    networks: [nova-net]
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    container_name: nova-prefect
+    restart: unless-stopped
+    ports: ["4200:4200"]
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:${PG_PREFECT_PASSWORD}@pg-prefect:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 2
+    command: >
+      bash -c "prefect server start --no-services &
+               prefect server services start &
+               prefect worker start --pool nova-pool"
+    depends_on:
+      pg-prefect: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  # === DATABASES ===
+
+  pg-nova:
+    image: pgvector/pgvector:pg16
+    container_name: pg-nova
+    restart: unless-stopped
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: nova
+      POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
+      POSTGRES_DB: nova
+    volumes:
+      - /mnt/storage/pg-nova:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=1536MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "max_connections=100"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nova"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 2G }
+    networks: [nova-net]
+
+  pg-agno:
+    image: pgvector/pgvector:pg16
+    container_name: pg-agno
+    restart: unless-stopped
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: agno
+      POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
+      POSTGRES_DB: agno
+    volumes:
+      - /mnt/storage/pg-agno:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=50"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agno"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+  pg-prefect:
+    image: postgres:16-alpine
+    container_name: pg-prefect
+    restart: unless-stopped
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: ${PG_PREFECT_PASSWORD}
+      POSTGRES_DB: prefect
+    volumes:
+      - prefect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 256M }
+    networks: [nova-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: nova-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --databases 4
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    networks: [nova-net]
+
+volumes:
+  prefect_pgdata:
+  redis_data:
+
+networks:
+  nova-net:
+    name: nova-network
