@@ -1,0 +1,25 @@
+{
+  "name": "qyne",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Qyne — Commercial growth SaaS for merchants",
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write \"**/*.{ts,tsx,vue,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,json,md,yaml,yml}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  },
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -105,6 +105,7 @@ All tiers run on one codebase. Feature flags control access.
 | [13 — UX Inspiration & Design Principles](docs/13-UX-INSPIRATION-DESIGN-PRINCIPLES.md) | Competitive UX analysis (Treinta, Take.app, Loyverse, Shopify), design principles, progressive disclosure |
 | [14 — Production Assessment & Features](docs/14-PRODUCTION-ASSESSMENT-FEATURES-AGENTIC.md) | Production-grade audit, complete feature catalog (98 features), WhatsApp bot architecture, agentic advantages |
 | [15 — Sprint Roadmap & Secrets](docs/15-ROADMAP-SPRINTS-SECRETS.md) | 27-sprint operational roadmap, Pulumi ESC secrets management, current infrastructure state |
+| [16 — Production Hardening Layer](docs/16-PRODUCTION-HARDENING-LAYER.md) | Deferred operational hardening: observability, DR/backup, security, CI/CD, load testing, compliance. Prioritized timeline for post-MVP implementation. |
 
 ---
 

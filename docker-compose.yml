@@ -1,0 +1,106 @@
+# Qyne — Local Development Stack
+# Mirrors production: 3 PostgreSQL instances + Redis.
+# Application services (api, dashboard, catalog) run via `pnpm dev`.
+#
+# Usage:
+#   docker compose up -d        # Start databases + Redis
+#   pnpm dev                    # Start all apps (api :3000, dashboard :3001, catalog :3002)
+#   docker compose down         # Stop everything
+#   docker compose down -v      # Stop and delete all data
+
+services:
+  # === DATABASES ===
+
+  # pg-qyne: Business data (products, orders, customers, RLS)
+  pg-qyne:
+    image: pgvector/pgvector:pg16
+    container_name: pg-qyne
+    restart: unless-stopped
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: qyne
+      POSTGRES_PASSWORD: qyne_dev
+      POSTGRES_DB: qyne
+    volumes:
+      - pg_qyne_data:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=100"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qyne"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # pg-agno: Agent data (memories, sessions, traces, vectors)
+  pg-agno:
+    image: pgvector/pgvector:pg16
+    container_name: pg-agno
+    restart: unless-stopped
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: agno
+      POSTGRES_PASSWORD: agno_dev
+      POSTGRES_DB: agno
+    volumes:
+      - pg_agno_data:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=64MB"
+      - "-c"
+      - "max_connections=50"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agno"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # pg-prefect: Workflow data (flow runs, schedules, task states)
+  pg-prefect:
+    image: postgres:16-alpine
+    container_name: pg-prefect
+    restart: unless-stopped
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: prefect_dev
+      POSTGRES_DB: prefect
+    volumes:
+      - pg_prefect_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # === CACHE + QUEUES ===
+
+  redis:
+    image: redis:7-alpine
+    container_name: qyne-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass qyne_dev
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --databases 4
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "qyne_dev", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pg_qyne_data:
+  pg_agno_data:
+  pg_prefect_data:
+  redis_data:
