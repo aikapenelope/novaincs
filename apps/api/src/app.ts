@@ -3,10 +3,12 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./routes/health.js";
+import { tenantRoutes } from "./routes/tenants.js";
 
 // Create the Hono app with typed environment bindings.
 export type AppEnv = {
   Variables: {
+    userId?: string;
     tenantId?: string;
   };
 };
@@ -20,6 +22,7 @@ app.onError(errorHandler);
 
 // --- Routes ---
 app.route("/", healthRoutes);
+app.route("/tenants", tenantRoutes);
 
 // API root
 app.get("/", (c) => {
