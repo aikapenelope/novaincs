@@ -51,5 +51,5 @@ export function useApi() {
     return response.data;
   }
 
-  return { get, post, patch, del, apiUrl };
+  return { get, post, patch, del, apiUrl, authToken, tenantId };
 }

@@ -1,16 +1,57 @@
 <script setup lang="ts">
 /**
- * Create product page — /products/new
- * Form for creating a new product with image upload and category selector.
+ * Edit product page — /products/:id
+ * Loads existing product data and allows editing all fields.
+ * Reuses the same form structure as the create page.
  */
-useHead({ title: "Nuevo producto — Qyne" });
 
-const { get, post } = useApi();
+const route = useRoute();
 const router = useRouter();
+const productId = route.params.id as string;
+const { get, patch, del } = useApi();
+
+useHead({ title: "Editar producto — Qyne" });
+
+interface ProductImage {
+  url: string;
+  key: string;
+}
+
+interface ProductData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  priceUsd: string | null;
+  priceBs: string | null;
+  costUsd: string | null;
+  sku: string | null;
+  categoryId: string | null;
+  stock: number;
+  status: string;
+  images: ProductImage[];
+  hasVariants: boolean;
+  variants: Variant[];
+}
+
+interface Variant {
+  id: string;
+  name: string;
+  sku: string | null;
+  priceUsd: string | null;
+  priceBs: string | null;
+  stock: number;
+  options: Record<string, string>;
+  status: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 const form = reactive({
   name: "",
-  slug: "",
   description: "",
   priceUsd: "",
   priceBs: "",
@@ -18,50 +59,52 @@ const form = reactive({
   sku: "",
   categoryId: "" as string | null,
   stock: 0,
-  status: "active" as "active" | "draft",
-  images: [] as { url: string; key: string }[],
+  status: "active",
+  images: [] as ProductImage[],
 });
 
-const isSubmitting = ref(false);
-const error = ref<string | null>(null);
-const isUploadingImage = ref(false);
-
-// Load categories for the selector.
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  parentId: string | null;
-}
+const product = ref<ProductData | null>(null);
 const categories = ref<Category[]>([]);
+const isLoading = ref(true);
+const isSaving = ref(false);
+const isDeleting = ref(false);
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
+const isUploadingImage = ref(false);
 
 onMounted(async () => {
   try {
-    categories.value = await get<Category[]>("/categories");
+    const [productData, categoryData] = await Promise.all([
+      get<ProductData>(`/products/${productId}`),
+      get<Category[]>("/categories").catch(() => [] as Category[]),
+    ]);
+
+    product.value = productData;
+    categories.value = categoryData;
+
+    // Populate form with existing data.
+    form.name = productData.name;
+    form.description = productData.description ?? "";
+    form.priceUsd = productData.priceUsd ?? "";
+    form.priceBs = productData.priceBs ?? "";
+    form.costUsd = productData.costUsd ?? "";
+    form.sku = productData.sku ?? "";
+    form.categoryId = productData.categoryId;
+    form.stock = productData.stock;
+    form.status = productData.status;
+    form.images = productData.images ?? [];
   } catch {
-    // Categories may not exist yet — not a blocking error.
+    error.value = "No se pudo cargar el producto";
+  } finally {
+    isLoading.value = false;
   }
 });
-
-// Auto-generate slug from name.
-watch(
-  () => form.name,
-  (name) => {
-    form.slug = name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-  },
-);
 
 async function handleImageUpload(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
 
-  // Client-side validation.
   const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
   if (!allowedTypes.includes(file.type)) {
     error.value = "Formato no soportado. Usa JPEG, PNG o WebP.";
@@ -80,13 +123,14 @@ async function handleImageUpload(event: Event) {
     formData.append("file", file);
 
     const config = useRuntimeConfig();
+    const { authToken, tenantId } = useApi();
     const response = await $fetch<{ data: { url: string; key: string } }>(
       `${config.public.apiUrl}/uploads/image`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${useApi().authToken}`,
-          "X-Tenant-Id": useApi().tenantId,
+          Authorization: `Bearer ${authToken}`,
+          "X-Tenant-Id": tenantId,
         },
         body: formData,
       },
@@ -97,7 +141,6 @@ async function handleImageUpload(event: Event) {
     error.value = err instanceof Error ? err.message : "Error al subir imagen";
   } finally {
     isUploadingImage.value = false;
-    // Reset input so the same file can be selected again.
     input.value = "";
   }
 }
@@ -106,19 +149,19 @@ function removeImage(index: number) {
   form.images.splice(index, 1);
 }
 
-async function handleSubmit() {
-  if (!form.name || !form.slug) {
+async function handleSave() {
+  if (!form.name) {
     error.value = "Nombre es requerido";
     return;
   }
 
-  isSubmitting.value = true;
+  isSaving.value = true;
   error.value = null;
+  successMessage.value = null;
 
   try {
-    await post("/products", {
+    await patch(`/products/${productId}`, {
       name: form.name,
-      slug: form.slug,
       description: form.description || null,
       priceUsd: form.priceUsd || null,
       priceBs: form.priceBs || null,
@@ -129,55 +172,77 @@ async function handleSubmit() {
       status: form.status,
       images: form.images,
     });
+    successMessage.value = "Producto actualizado";
+    setTimeout(() => {
+      successMessage.value = null;
+    }, 3000);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "Error al guardar";
+  } finally {
+    isSaving.value = false;
+  }
+}
+
+async function handleDelete() {
+  if (!confirm("Archivar este producto? No sera visible en el catalogo.")) return;
+
+  isDeleting.value = true;
+  error.value = null;
+
+  try {
+    await del(`/products/${productId}`);
     await router.push("/products");
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Error al crear producto";
+    error.value = err instanceof Error ? err.message : "Error al archivar";
   } finally {
-    isSubmitting.value = false;
+    isDeleting.value = false;
   }
 }
 </script>
 
 <template>
-  <div class="create-product">
+  <div class="edit-product">
     <div class="page-header">
       <NuxtLink to="/products" class="back-link">&larr; Productos</NuxtLink>
-      <h1>Nuevo producto</h1>
+      <div class="header-row">
+        <h1>{{ isLoading ? "Cargando..." : form.name || "Editar producto" }}</h1>
+        <button
+          v-if="!isLoading && product"
+          type="button"
+          class="btn-danger"
+          :disabled="isDeleting"
+          @click="handleDelete"
+        >
+          {{ isDeleting ? "Archivando..." : "Archivar" }}
+        </button>
+      </div>
     </div>
 
-    <form class="product-form" @submit.prevent="handleSubmit">
+    <div v-if="isLoading" class="loading">Cargando producto...</div>
+
+    <form v-else-if="product" class="product-form" @submit.prevent="handleSave">
       <div v-if="error" class="form-error">{{ error }}</div>
+      <div v-if="successMessage" class="form-success">{{ successMessage }}</div>
 
       <div class="form-section">
         <h2>Informacion basica</h2>
 
         <div class="form-group">
           <label for="name">Nombre *</label>
-          <input
-            id="name"
-            v-model="form.name"
-            type="text"
-            placeholder="Ej: Camisa Polo Azul"
-            required
-          />
+          <input id="name" v-model="form.name" type="text" required />
         </div>
 
         <div class="form-group">
-          <label for="slug">URL del catalogo</label>
-          <div class="slug-preview">
-            tu-tienda.qyne.app/p/<strong>{{ form.slug || "..." }}</strong>
+          <label>URL del catalogo</label>
+          <div class="slug-display">
+            tu-tienda.qyne.app/p/<strong>{{ product.slug }}</strong>
           </div>
-          <input id="slug" v-model="form.slug" type="text" placeholder="camisa-polo-azul" />
+          <p class="field-hint">El slug no se puede cambiar despues de crear el producto.</p>
         </div>
 
         <div class="form-group">
           <label for="description">Descripcion</label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            rows="3"
-            placeholder="Describe tu producto..."
-          />
+          <textarea id="description" v-model="form.description" rows="3" />
         </div>
 
         <div class="form-group">
@@ -195,6 +260,7 @@ async function handleSubmit() {
           <select id="status" v-model="form.status">
             <option value="active">Activo (visible en catalogo)</option>
             <option value="draft">Borrador (no visible)</option>
+            <option value="archived">Archivado</option>
           </select>
         </div>
       </div>
@@ -220,28 +286,64 @@ async function handleSubmit() {
           </div>
           <div class="form-group">
             <label for="stock">Stock</label>
-            <input id="stock" v-model.number="form.stock" type="number" min="0" />
+            <input
+              id="stock"
+              v-model.number="form.stock"
+              type="number"
+              min="0"
+              :disabled="product.hasVariants"
+            />
+            <p v-if="product.hasVariants" class="field-hint">
+              Stock calculado automaticamente desde las variantes.
+            </p>
           </div>
         </div>
 
         <div class="form-group">
           <label for="sku">SKU</label>
-          <input id="sku" v-model="form.sku" type="text" placeholder="POLO-AZ-001" />
+          <input id="sku" v-model="form.sku" type="text" />
         </div>
+      </div>
+
+      <!-- Variants section (read-only summary for now) -->
+      <div v-if="product.hasVariants && product.variants.length > 0" class="form-section">
+        <h2>Variantes ({{ product.variants.length }})</h2>
+        <table class="variants-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>SKU</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="v in product.variants" :key="v.id">
+              <td>{{ v.name }}</td>
+              <td>{{ v.sku || "—" }}</td>
+              <td>{{ v.priceUsd ? `$${v.priceUsd}` : "Precio base" }}</td>
+              <td>{{ v.stock }}</td>
+              <td>
+                <span :class="['status-badge', `status-${v.status}`]">
+                  {{ v.status === "active" ? "Activo" : "Archivado" }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="form-section">
         <h2>Fotos</h2>
 
-        <!-- Uploaded images preview -->
         <div v-if="form.images.length > 0" class="image-preview-grid">
-          <div v-for="(img, idx) in form.images" :key="img.key" class="image-preview">
+          <div v-for="(img, idx) in form.images" :key="img.key || idx" class="image-preview">
             <img :src="img.url" alt="Producto" />
             <button type="button" class="remove-image-btn" @click="removeImage(idx)">x</button>
           </div>
         </div>
 
-        <!-- Upload area -->
         <label class="image-upload-area" :class="{ uploading: isUploadingImage }">
           <input
             type="file"
@@ -263,16 +365,21 @@ async function handleSubmit() {
         <button type="button" class="btn-secondary" @click="router.push('/products')">
           Cancelar
         </button>
-        <button type="submit" class="btn-primary" :disabled="isSubmitting">
-          {{ isSubmitting ? "Creando..." : "Crear producto" }}
+        <button type="submit" class="btn-primary" :disabled="isSaving">
+          {{ isSaving ? "Guardando..." : "Guardar cambios" }}
         </button>
       </div>
     </form>
+
+    <div v-else class="error-state">
+      <p>{{ error || "Producto no encontrado" }}</p>
+      <NuxtLink to="/products" class="btn-secondary">Volver a productos</NuxtLink>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.create-product {
+.edit-product {
   max-width: 700px;
 }
 
@@ -288,15 +395,38 @@ async function handleSubmit() {
   font-size: 0.875rem;
 }
 
-.page-header h1 {
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-row h1 {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.loading,
+.error-state {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
 }
 
 .form-error {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.form-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
   padding: 0.75rem;
   border-radius: 0.375rem;
   margin-bottom: 1rem;
@@ -348,16 +478,68 @@ async function handleSubmit() {
   box-shadow: 0 0 0 1px #111827;
 }
 
-.slug-preview {
+.form-group input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.slug-display {
+  font-size: 0.875rem;
+  color: #374151;
+  padding: 0.5rem 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+}
+
+.field-hint {
   font-size: 0.75rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+}
+
+/* Variants table */
+.variants-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variants-table th {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.variants-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-archived {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 /* Image upload */
@@ -398,7 +580,6 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
 }
 
 .image-upload-area {
@@ -412,7 +593,6 @@ async function handleSubmit() {
   text-align: center;
   color: #6b7280;
   cursor: pointer;
-  transition: border-color 0.2s;
 }
 
 .image-upload-area:hover {
@@ -476,9 +656,29 @@ async function handleSubmit() {
   border-radius: 0.375rem;
   font-size: 0.875rem;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .btn-secondary:hover {
   background: #f9fafb;
+}
+
+.btn-danger {
+  padding: 0.375rem 0.75rem;
+  background: white;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background: #fef2f2;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

@@ -13,7 +13,7 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   constructor(baseDir?: string, baseUrl?: string) {
     this.baseDir = baseDir || join(process.cwd(), ".uploads");
-    this.baseUrl = baseUrl || "http://localhost:3000/uploads";
+    this.baseUrl = baseUrl || "http://localhost:3000/files";
   }
 
   async upload(key: string, data: Buffer | Uint8Array, _contentType: string): Promise<string> {
