@@ -37,6 +37,8 @@ export const customers = pgTable(
     rfmScore: jsonb("rfm_score"),
     segment: varchar("segment", { length: 50 }),
     tags: jsonb("tags").notNull().default([]),
+    // Anonymous session IDs merged into this customer (identity resolution)
+    visitorIds: jsonb("visitor_ids").notNull().default([]),
     notes: text("notes"),
     metadata: jsonb("metadata").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
