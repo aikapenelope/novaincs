@@ -294,70 +294,9 @@ Combined LLM + Photoroom stays under 6% of revenue. Healthy margins.
 
 ---
 
-## 4. What Still Needs to Be Defined Before Coding
+## 4. Pre-Development Checklist
 
-### 4.1 Decisions Needed
-
-| # | Decision | Options | Impact | Who Decides |
-|---|---|---|---|---|
-| 1 | **Product name** | Nova? NovaIncs? Other? | Domain, branding, Meta app name | Founder |
-| 2 | **Domain** | nova.app? novaincs.com? Other? | SSL, email, catalog URLs | Founder |
-| 3 | **Hetzner datacenter location** | Helsinki (hel1) vs Ashburn (ash) vs Falkenstein (fsn1) | Helsinki (hel1) — CX43 available at ~€16/mo. Catalog on Cloudflare Workers edge mitigates latency. | Technical + founder |
-| 4 | **Billing provider** | Stripe (international) vs local VZ payment for subscriptions | How merchants pay for Nova itself | Founder + legal |
-| 5 | **BCV rate source** | Which API for official exchange rate? BCV scraping? Third-party? | Accuracy of Bs pricing | Technical |
-| 6 | **WhatsApp approach for MVP** | Deep links only (free) vs Cloud API from day 1 (cost) | Feature scope of MVP | Founder |
-| 7 | **Free tier limits** | 20 products? 50 orders? 10 AI images? | Conversion to paid | Founder |
-| 8 | **Language** | Spanish only? Spanish + English? | Market scope | Founder |
-| 9 | **Legal entity** | Where is Nova incorporated? Privacy policy jurisdiction? | Terms of service, data handling | Founder + legal |
-
-### 4.2 Design Artifacts Needed
-
-| # | Artifact | Description | Blocks |
-|---|---|---|---|
-| 1 | **Database schema (Drizzle)** | All tables, relations, indexes, RLS policies | All backend development |
-| 2 | **API contract (OpenAPI)** | All endpoints, request/response types | Frontend-backend parallel development |
-| 3 | **UI wireframes (mobile)** | Key screens: onboarding, catalog, checkout, dashboard, CRM | Frontend development |
-| 4 | **Brand identity** | Logo, colors, typography, tone of voice | UI design, email templates |
-| 5 | **Agent prompt library** | System prompts for each agent (Sales, Finance, Content, Support) | Agent development |
-| 6 | **Email templates** | Welcome, weekly summary, monthly report, payment reminder | Email system |
-| 7 | **WhatsApp message templates** | Pre-approved templates for Meta (order confirmation, follow-up, etc.) | WhatsApp integration |
-
-### 4.3 Technical Setup Needed
-
-| # | Task | Time Estimate | Blocks |
-|---|---|---|---|
-| 1 | Hetzner account + CX43 provisioned | 1 hour | Everything |
-| 2 | Domain purchased + DNS configured | 1 hour | SSL, email, catalog URLs |
-| 3 | Clerk project created + configured | 30 min | Auth |
-| 4 | Resend account + domain verified | 1 hour | Email delivery |
-| 5 | Photoroom API key | 10 min | Image enhancement |
-| 6 | OpenAI API key (GPT-5 Mini) | 10 min | All LLM features |
-| 7 | Groq API key | 10 min | Voice + fast inference |
-| 8 | Meta Business Suite account | 1-2 hours | WhatsApp (if using Cloud API) |
-| 9 | Google Cloud service account (for Sheets) | 30 min | Google Sheets import |
-| 10 | GitHub repo structure + CI/CD | 2 hours | Development workflow |
-| 11 | Docker Compose for local development | 2 hours | Local dev environment |
-
-### 4.4 Summary: What's Ready vs What's Not
-
-| Category | Status |
-|---|---|
-| Product vision and positioning | **Ready** (docs 01-07) |
-| Feature list and prioritization | **Ready** (89 features, phased) |
-| Architecture and stack | **Ready** (Hono + Drizzle + Agno + Prefect) |
-| Buyer persona and pain points | **Ready** |
-| Business model and pricing | **Ready** (3 tiers) |
-| LLM model selection and costs | **Ready** (this document) |
-| Infrastructure sizing | **Ready** (CX43 for 200 users) |
-| Roadmap and phases | **Ready** (12 months, 4 phases) |
-| Database schema | **Not started** — first coding task |
-| API contract | **Not started** — second coding task |
-| UI wireframes | **Not started** — can parallel with backend |
-| Brand identity | **Not started** — needed for UI |
-| Agent prompts | **Not started** — Phase 2 task |
-| Domain and accounts | **Not started** — 1 day of setup |
-
-**Bottom line**: The planning is complete. What remains is execution: set up accounts (1 day), design the database schema (2-3 days), define the API contract (2-3 days), create UI wireframes (1 week), and start coding Phase 0 (Foundation, 4 weeks).
+> **See [doc 09 — Catalog Edge & Pre-Dev Checklist](09-CATALOG-EDGE-DEPLOYMENT-PREDEV-CHECKLIST.md), section 2** for the complete pre-development checklist with founder decisions, account setup, design artifacts, development environment setup, server provisioning, and day-by-day timeline.
 
 ---
 
