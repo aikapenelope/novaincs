@@ -40,7 +40,7 @@ Everything needed to deploy Nova on any Ubuntu 24.04 VPS. This directory is inde
 - **OS**: Ubuntu 24.04 LTS
 - **CPU**: 8 vCPU minimum
 - **RAM**: 16 GB minimum (8 GB used by containers, 8 GB headroom)
-- **Disk**: 160 GB NVMe (server) + 100 GB block storage (recommended for databases)
+- **Disk**: 160 GB NVMe (server disk, databases use /var/lib/nova/)
 - **Ports**: 22 (SSH), 80 (HTTP), 443 (HTTPS), 3000 (Dokploy UI)
 
 Tested on Hetzner CX43. Works on any VPS provider (DigitalOcean, Vultr, Linode, OVH, etc.).
@@ -49,7 +49,7 @@ Tested on Hetzner CX43. Works on any VPS provider (DigitalOcean, Vultr, Linode, 
 
 ### 1. Provision a VPS
 
-Any Ubuntu 24.04 server with 8 vCPU / 16 GB RAM. If the provider offers block storage, attach a 100 GB volume — the setup script will detect it automatically.
+Any Ubuntu 24.04 server with 8 vCPU / 16 GB RAM and at least 160 GB disk.
 
 ### 2. Run the setup script
 
@@ -57,7 +57,7 @@ Any Ubuntu 24.04 server with 8 vCPU / 16 GB RAM. If the provider offers block st
 ssh root@your-server 'bash -s' < setup.sh
 ```
 
-This installs Docker, Dokploy (with Traefik), and creates the data directories. If block storage is mounted at `/mnt/storage`, databases use it. Otherwise, they use `/var/lib/nova` on the server disk.
+This installs Docker, Dokploy (with Traefik), and creates the data directories at `/var/lib/nova/`.
 
 ### 3. Configure environment variables
 
@@ -93,20 +93,14 @@ Open `http://your-server-ip:3000`, create the admin account, and configure:
 
 ## Data Storage
 
-### With block storage (recommended)
-
 ```
-/mnt/storage/
+/var/lib/nova/
 ├── pg-nova/     # Business data (products, orders, customers, RLS)
 ├── pg-agno/     # Agent data (memories, sessions, traces, vectors)
 └── backups/     # pg_dump destination
 ```
 
-pg-prefect and redis use Docker volumes on the server disk (their data is operational and regenerable).
-
-### Without block storage
-
-The setup script falls back to `/var/lib/nova/` on the server disk. Everything works the same, but you lose the ability to expand storage independently or survive a server recreation.
+pg-prefect and redis use Docker volumes (their data is operational and regenerable). All data is covered by Hetzner automated backups (full server snapshots).
 
 ## Memory Budget
 
@@ -127,12 +121,12 @@ The setup script falls back to `/var/lib/nova/` on the server disk. Everything w
 ## Backups
 
 - **Hetzner automated backups**: Enable in the Hetzner console (covers the full server disk).
-- **pg_dump**: Schedule daily dumps to `/mnt/storage/backups/` (or `/var/lib/nova/backups/`):
+- **pg_dump**: Schedule daily dumps to `/var/lib/nova/backups/` (or `/var/lib/nova/backups/`):
 
 ```bash
 # Add to crontab on the host
-0 3 * * * docker exec pg-nova pg_dump -U nova nova | gzip > /mnt/storage/backups/nova-$(date +\%Y\%m\%d).sql.gz
-0 3 * * 0 docker exec pg-agno pg_dump -U agno agno | gzip > /mnt/storage/backups/agno-$(date +\%Y\%m\%d).sql.gz
+0 3 * * * docker exec pg-nova pg_dump -U nova nova | gzip > /var/lib/nova/backups/nova-$(date +\%Y\%m\%d).sql.gz
+0 3 * * 0 docker exec pg-agno pg_dump -U agno agno | gzip > /var/lib/nova/backups/agno-$(date +\%Y\%m\%d).sql.gz
 ```
 
 ## Replicating to Another VPS

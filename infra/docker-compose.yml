@@ -98,7 +98,7 @@ services:
       POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
       POSTGRES_DB: nova
     volumes:
-      - /mnt/storage/pg-nova:/var/lib/postgresql/data
+      - /var/lib/nova/pg-nova:/var/lib/postgresql/data
     command:
       - "postgres"
       - "-c"
@@ -120,7 +120,7 @@ services:
     networks: [nova-net]
 
   pg-agno:
-    image: pgvector/pgvector:pg16
+    image: agnohq/pgvector:16
     container_name: pg-agno
     restart: unless-stopped
     ports: ["5433:5432"]
@@ -129,7 +129,7 @@ services:
       POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
       POSTGRES_DB: agno
     volumes:
-      - /mnt/storage/pg-agno:/var/lib/postgresql/data
+      - /var/lib/nova/pg-agno:/var/lib/postgresql/data
     command:
       - "postgres"
       - "-c"

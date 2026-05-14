@@ -323,8 +323,9 @@ Nova is a **mobile-first commercial growth SaaS** that turns the merchant's phon
 | **Cache/Queue** | Redis 7 + BullMQ | Cache, sessions, pub/sub, job queues |
 | **Object Storage** | Cloudflare R2 | S3-compatible, free egress, no container needed |
 | **Agent Framework** | Agno (AgentOS) | Multi-agent, model-agnostic, MCP native, WhatsApp native |
-| **LLM - Reasoning** | Claude Sonnet 4 (via API) | Best reasoning for business agents |
-| **LLM - Fast** | GPT-4.1-mini or Claude Haiku | For fast tasks (classification, extraction, OCR) |
+| **LLM - Workhorse** | GPT-5 Mini | 4x cheaper than Claude Haiku, vision capable, handles all agent tasks (see doc 08 for cost analysis) |
+| **LLM - Fast** | Groq Llama 4 Scout | Cheapest and fastest for simple tasks (classification, intent detection) |
+| **LLM - Reasoning** | Claude Sonnet 4 | Complex analysis only (quarterly reviews, migration conflicts). Rarely used. |
 | **Voice** | Groq Whisper | Ultra-fast transcription for voice commands |
 | **Image AI** | Photoroom API | $0.02/image, best quality for ecommerce |
 | **OCR** | Tesseract.js (client) + Google Vision (server) | Client-side free + server-side for precision |

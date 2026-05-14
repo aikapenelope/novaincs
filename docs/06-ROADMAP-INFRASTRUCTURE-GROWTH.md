@@ -294,13 +294,13 @@ For the first 1,000 merchants, a single Hetzner server handles everything:
 
 | Component | Server | Specs | Monthly Cost |
 |---|---|---|---|
-| **Application Server** | CX42 | 8 vCPU, 16 GB RAM, 160 GB NVMe | ~$16.49/month |
+| **Application Server** | CX43 | 8 vCPU, 16 GB RAM, 160 GB NVMe | ~$16.49/month |
 | **Block Storage** | Volume | 100 GB (expandable) | ~$5/month |
 | **Backups** | Automated | 20% of server cost | ~$10/month |
 | **Load Balancer** | Not needed yet | — | $0 |
 | **Total Infrastructure** | | | **~$65/month** |
 
-**Why CX42 (Dedicated vCPU)?**
+**Why CX43 (Dedicated vCPU)?**
 - Dedicated CPUs mean no "noisy neighbor" problem. PostgreSQL and Redis need consistent performance.
 - 32 GB RAM is enough for: PostgreSQL (16 GB allocated), Redis (4 GB), Node.js app (4 GB), Prefect (4 GB), OS + overhead (4 GB)
 - 240 GB NVMe handles the database + Cloudflare R2 images for the first 1,000 merchants
@@ -393,7 +393,7 @@ Traefik handles SSL certificates automatically via Let's Encrypt.
 
 | Users | Infrastructure | Monthly Cost | When to Scale |
 |---|---|---|---|
-| 0-1,000 | 1x CX42 + 100GB volume | ~$25/month | Start here |
+| 0-1,000 | 1x CX43 + 100GB volume | ~$25/month | Start here |
 | 1,000-5,000 | 1x CCX53 (16 vCPU, 64 GB) + 500GB volume | ~$120/month | When DB exceeds 200GB or CPU > 70% sustained |
 | 5,000-25,000 | 2 servers (app + DB separated) + managed backup | ~$250/month | When single server can't handle both app and DB |
 | 25,000-100,000 | 3+ servers (app cluster + DB primary/replica + Redis cluster) | ~$500-1,000/month | When you need high availability |

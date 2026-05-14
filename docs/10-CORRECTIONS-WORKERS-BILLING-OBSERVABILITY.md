@@ -34,7 +34,7 @@ STEP 3: A buyer in Caracas visits carlos-fashion.nova.app
 
 STEP 4: The Worker fetches data from your API on Hetzner
   → Worker makes HTTP request to api.nova.app/v1/catalog/carlos-fashion/products
-  → api.nova.app points to Hetzner (Ashburn)
+  → api.nova.app points to Hetzner (Helsinki)
   → Hetzner responds with JSON product data
   → Worker renders the HTML with that data
   → Worker sends the complete HTML page to the buyer
@@ -61,8 +61,8 @@ Cloudflare Worker (Miami POP)
     │         NO
     │         │
     │         ▼
-    │   HTTP fetch to api.nova.app (Hetzner Ashburn)
-    │   ~20ms Miami→Ashburn
+    │   HTTP fetch to api.nova.app (Hetzner Helsinki)
+    │   ~80ms Miami→Helsinki
     │         │
     │         ▼
     │   Hono API → PostgreSQL → JSON response
@@ -80,7 +80,7 @@ Return HTML to buyer (~80ms total on cache miss, ~30ms on cache hit)
 | Component | Where It Runs | Why |
 |---|---|---|
 | Catalog PWA (Nuxt SSR) | **Cloudflare Workers** | Edge rendering, fast for buyers globally |
-| Dashboard PWA (Nuxt SSR) | **Hetzner CX42** (Nova's own server) | Needs direct DB access, agents, workers |
+| Dashboard PWA (Nuxt SSR) | **Hetzner CX43** (Nova's own server) | Needs direct DB access, agents, workers |
 | Hono API | **Hetzner** | Direct PostgreSQL/Redis access |
 | PostgreSQL, Redis, Cloudflare R2 | **Hetzner** | Data stays on your server |
 | Agno Agents | **Hetzner** | Need DB access + LLM API calls |
@@ -284,7 +284,7 @@ Based on these clarifications, remove from all planning documents:
 
 | Service | Old Cost | New Cost | Change |
 |---|---|---|---|
-| Hetzner CX42 | $8.49 | $8.49 | — |
+| Hetzner CX43 | $8.49 | $8.49 | — |
 | Backups | $1.70 | $1.70 | — |
 | Block Storage | $2.60 | $2.60 | — |
 | Clerk | Free | Free | — |
@@ -297,6 +297,6 @@ Based on these clarifications, remove from all planning documents:
 | Grafana Cloud | $0 | **Removed** | -$0 (was planned for future) |
 | Cloudflare Workers | Free | Free | — |
 | Domain | $1.25 | $1.25 | — |
-| **Total** | **$71.39** | **$71.39** | Updated for CX42 + proper isolation |
+| **Total** | **$71.39** | **$71.39** | Updated for CX43 + proper isolation |
 
 The immediate cost doesn't change because the removed items were all future-phase additions. But the architecture is now simpler and the operational burden is lower.

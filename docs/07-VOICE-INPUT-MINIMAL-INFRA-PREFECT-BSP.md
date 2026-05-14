@@ -101,18 +101,18 @@ At 200 merchants using voice input 10 times/day: $0.002 x 10 x 200 x 30 = **$12/
 
 ## 2. Infrastructure: First 200 Users
 
-> **NOTE**: This section is superseded by **doc 12 (COMPLETE-STACK-EXPLAINED.md)** which defines the production architecture with proper service isolation. Key changes: CX42 (16 GB) instead of CX32 (8 GB), 8 containers instead of 5, 3 separate PostgreSQL instances (nova, agno, prefect), Dokploy for deployment, Cloudflare R2 for storage. Total cost: $71.39/month.
+> **NOTE**: This section is superseded by **doc 12 (COMPLETE-STACK-EXPLAINED.md)** which defines the production architecture with proper service isolation. Key changes: CX43 (16 GB) instead of CX32 (8 GB), 8 containers instead of 5, 3 separate PostgreSQL instances (nova, agno, prefect), Dokploy for deployment, Cloudflare R2 for storage. Total cost: $71.39/month.
 
-### Server: Hetzner CX42
+### Server: Hetzner CX43
 
 | Component | Spec | Cost |
 |---|---|---|
-| **Hetzner CX42** | 8 vCPU, 16 GB RAM, 160 GB NVMe | **$16.49/month** |
+| **Hetzner CX43** | 8 vCPU, 16 GB RAM, 160 GB NVMe | **$16.49/month** |
 | **Backups** | Automated, 20% of server cost | $3.30/month |
 | **Block Storage** | 100 GB (PostgreSQL data) | $5.20/month |
 | **Total Infrastructure** | | **$24.99/month** |
 
-### What Runs on the CX42
+### What Runs on the CX43
 
 **8 containers** with proper service isolation (see doc 12 for full docker-compose.yml):
 
