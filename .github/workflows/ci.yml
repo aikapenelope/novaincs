@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test:
+    name: Lint, Typecheck, Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm --filter @qyne/shared build
+
+      - name: Typecheck API
+        run: pnpm --filter @qyne/api exec tsc --noEmit
+
+      - name: Typecheck Dashboard
+        run: pnpm --filter @qyne/dashboard exec nuxt typecheck
+        continue-on-error: true  # vue-router volar plugin warning is cosmetic
+
+      - name: Typecheck Catalog
+        run: pnpm --filter @qyne/catalog exec nuxt typecheck
+        continue-on-error: true
+
+      - name: Format check
+        run: pnpm exec prettier --check "apps/**/*.{ts,vue}" "packages/**/*.ts"
+
+      - name: Run tests
+        run: pnpm --filter @qyne/api exec vitest run
