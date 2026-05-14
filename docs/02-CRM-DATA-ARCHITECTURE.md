@@ -777,72 +777,9 @@ Clerk is used by thousands of SaaS products for auth with built-in organization/
 
 **Nova's adaptation**: Clerk handles auth and organization management. Nova's tenant_members table extends Clerk's organization model with Nova-specific roles and permissions.
 
-### 6.2 Implementation Phases (Production-Grade)
+### 6.2 Implementation Phases
 
-#### Phase 0: Foundation (Weeks 1-4)
-
-- Project scaffolding (Nuxt 3 + Hono + Drizzle + PostgreSQL)
-- Multi-tenant schema with RLS
-- Clerk auth integration with tenant context
-- CI/CD pipeline (GitHub Actions -> Docker -> deploy)
-- Monitoring setup (OpenTelemetry + Grafana)
-- Automated testing framework
-
-**Exit criteria**: Can create a tenant, authenticate, and perform CRUD on products with full tenant isolation.
-
-#### Phase 1: MVP Core (Weeks 5-12)
-
-- Product catalog (CRUD + public PWA)
-- Image AI integration (Photoroom API)
-- Basic inventory management
-- WhatsApp checkout flow (deep links, not API yet)
-- Pago Movil / Zelle payment flow with screenshot upload
-- Basic OCR verification (Tesseract.js client-side)
-- Import pipeline (Excel/CSV -> products)
-- Basic financial tracking (income per sale)
-
-**Exit criteria**: A merchant can create a store, add products with AI-enhanced photos, share a catalog link, receive orders via WhatsApp, verify payments, and see daily income.
-
-#### Phase 2: Intelligence (Weeks 13-24)
-
-- Micro-CRM with automatic customer profiles
-- RFM scoring engine (BullMQ cron job)
-- Behavioral event tracking (catalog views, cart events)
-- Customer segments (auto-generated)
-- Daily briefing generation (AI agent)
-- Smart feed with suggestions
-- Google Sheets import/export (MCP integration)
-- Customer import pipeline
-- Accounts receivable tracking
-- Exchange rate integration + price update tool
-
-**Exit criteria**: The merchant opens the app and sees actionable intelligence about their customers, not just a list of products.
-
-#### Phase 3: Automation (Weeks 25-40)
-
-- WhatsApp Business API integration (full)
-- Automated message sequences (welcome, follow-up, win-back)
-- Broadcast campaigns by segment
-- AI Content Agent (Story generation, product descriptions)
-- AI Sales Agent (proactive suggestions + autonomous mode)
-- Voice commands (Groq Whisper)
-- Financial dashboard with projections
-- Delivery zone management
-- ClickHouse integration for analytics at scale
-
-**Exit criteria**: The system actively helps the merchant sell more, not just track what happened.
-
-#### Phase 4: Platform (Weeks 41-52+)
-
-- Public API (documented, versioned)
-- MCP Server ecosystem (custom integrations)
-- Embedded finance foundations (payment processing)
-- Multi-store support
-- Loyalty program
-- Marketplace features (shared catalog)
-- Multi-country expansion preparation
-
-**Exit criteria**: Nova is a platform that others can build on, not just a tool.
+> **See [doc 06 — Roadmap & Infrastructure](06-ROADMAP-INFRASTRUCTURE-GROWTH.md)** for the complete phase-by-phase roadmap with weekly deliverables, and **[doc 15 — Sprint Roadmap](15-ROADMAP-SPRINTS-SECRETS.md)** for the operational sprint plan.
 
 ### 6.3 Testing Strategy
 
