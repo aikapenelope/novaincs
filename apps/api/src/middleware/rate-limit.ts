@@ -11,9 +11,7 @@ import { HTTPException } from "hono/http-exception";
  * @param windowMs - Time window in milliseconds (default: 60_000 = 1 minute)
  * @param maxRequests - Maximum requests per window per IP (default: 100)
  */
-export function rateLimiter(
-  options: { windowMs?: number; maxRequests?: number } = {},
-) {
+export function rateLimiter(options: { windowMs?: number; maxRequests?: number } = {}) {
   const windowMs = options.windowMs ?? 60_000;
   const maxRequests = options.maxRequests ?? 100;
 
