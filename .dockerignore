@@ -1,0 +1,10 @@
+# Docker build context ignores
+node_modules
+.nuxt
+.output
+dist
+.turbo
+.git
+*.md
+.env*
+.uploads
