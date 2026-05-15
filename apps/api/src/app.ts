@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { errorHandler } from "./middleware/error-handler.js";
+import { rateLimiter } from "./middleware/rate-limit.js";
 import { healthRoutes } from "./routes/health.js";
 import { tenantRoutes } from "./routes/tenants.js";
 import { productRoutes } from "./routes/products.js";
@@ -22,7 +23,28 @@ const app = new Hono<AppEnv>();
 
 // --- Global middleware ---
 app.use("*", logger());
-app.use("*", cors());
+app.use("*", rateLimiter({ windowMs: 60_000, maxRequests: 100 }));
+
+// CORS: restrict to known origins in production, allow all in development.
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+  : ["http://localhost:3001", "http://localhost:3002"];
+
+app.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      // Allow requests with no origin (server-to-server, curl, health checks).
+      if (!origin) return null;
+      if (allowedOrigins.includes(origin)) return origin;
+      return null;
+    },
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Tenant-Id"],
+    maxAge: 86400,
+  }),
+);
+
 app.onError(errorHandler);
 
 // --- Routes ---
