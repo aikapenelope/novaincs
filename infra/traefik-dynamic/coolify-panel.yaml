@@ -1,18 +1,37 @@
-# Coolify panel route - deploy.martes.app
+# Coolify panel route — deploy.martes.app
+# Restricted to Tailscale VPN IPs only (100.64.0.0/10 CGNAT range).
+# Access from the public internet is blocked with a 403.
 http:
+  middlewares:
+    tailscale-only:
+      ipAllowList:
+        sourceRange:
+          - "100.64.0.0/10"
+          - "127.0.0.1/32"
+        # Traefik sits behind Cloudflare, so the real client IP is in
+        # X-Forwarded-For. Without this, Traefik sees Cloudflare's IP
+        # and the allowlist would never match a Tailscale client.
+        ipStrategy:
+          depth: 1
+
   routers:
     coolify-panel-http:
       rule: "Host(`deploy.martes.app`)"
       entryPoints:
         - http
+      middlewares:
+        - tailscale-only
       service: coolify-panel
     coolify-panel-https:
       rule: "Host(`deploy.martes.app`)"
       entryPoints:
         - https
+      middlewares:
+        - tailscale-only
       service: coolify-panel
       tls:
         certResolver: letsencrypt
+
   services:
     coolify-panel:
       loadBalancer:
