@@ -83,8 +83,8 @@ values:
     fn::secret: <from-groq-console>
 
   # === External Services ===
-  photoroomApiKey:
-    fn::secret: <from-photoroom-dashboard>
+  falKey:
+    fn::secret: <from-fal-dashboard>
   resendApiKey:
     fn::secret: <from-resend-dashboard>
 
@@ -106,7 +106,7 @@ values:
     CLERK_SECRET_KEY: ${clerkSecretKey}
     OPENAI_API_KEY: ${openaiApiKey}
     GROQ_API_KEY: ${groqApiKey}
-    PHOTOROOM_API_KEY: ${photoroomApiKey}
+    FAL_KEY: ${falKey}
     RESEND_API_KEY: ${resendApiKey}
     R2_ACCESS_KEY_ID: ${r2AccessKeyId}
     R2_SECRET_ACCESS_KEY: ${r2SecretAccessKey}
@@ -130,7 +130,7 @@ REDIS_PASSWORD=$REDIS_PASSWORD
 CLERK_SECRET_KEY=$CLERK_SECRET_KEY
 OPENAI_API_KEY=$OPENAI_API_KEY
 GROQ_API_KEY=$GROQ_API_KEY
-PHOTOROOM_API_KEY=$PHOTOROOM_API_KEY
+FAL_KEY=$FAL_KEY
 RESEND_API_KEY=$RESEND_API_KEY
 R2_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY
@@ -176,7 +176,7 @@ pulumi env run aikapenelope-org/qyne-infra/nova-app -- env | grep PG_NOVA
 | # | Task | Blocks |
 |---|---|---|
 | 1 | Founder decisions: product name, domain, free tier limits, language, BCV rate source | Everything |
-| 2 | External accounts: Clerk, Cloudflare, Resend, OpenAI, Groq, Photoroom | Auth, images, email |
+| 2 | External accounts: Clerk, Cloudflare, Resend, OpenAI, Groq, fal.ai | Auth, images, email |
 | 3 | Create Pulumi ESC environment `qyne-infra/nova-app` with all secrets | Container deployment |
 | 4 | Monorepo scaffolding: pnpm workspace + turborepo | All code |
 | 5 | App scaffolding: `apps/api` (Hono), `apps/dashboard` (Nuxt 3), `apps/catalog` (Nuxt 3 CF Workers) | All code |
@@ -233,8 +233,8 @@ pulumi env run aikapenelope-org/qyne-infra/nova-app -- env | grep PG_NOVA
 
 #### Sprint 6 (Weeks 9-10): AI Images + Inventory
 
-- Photoroom API integration (background removal, staging)
-- BullMQ worker for async image processing
+- ~~Photoroom API~~ → fal.ai integration (rembg default + Bria premium). See doc 51.
+- BullMQ worker for async image processing (done: image-queue.ts)
 - Inventory management (stock per product/variant, +/- adjustment, movement history)
 - Low stock alerts (push notification)
 - Product variants (size, color, presentation)
@@ -394,14 +394,15 @@ pulumi env run aikapenelope-org/qyne-infra/nova-app -- env | grep PG_NOVA
 
 ```
 DONE     ██ Sprint 1: Infrastructure base (DBs, Redis, Prefect, backups)
-
-PHASE 0  ██ Sprint 2:  Decisions + Monorepo scaffolding
-         ██ Sprint 3:  Drizzle schema + Clerk auth + RLS
-         ██ Sprint 4:  API core + Basic catalog
-         ██ Sprint 5:  CI/CD + First production deploy
+DONE     ██ Sprint 2: Decisions + Monorepo scaffolding
+DONE     ██ Sprint 3: Drizzle schema + Clerk auth + RLS
+DONE     ██ Sprint 4: API core + Basic catalog
+DONE     ██ Sprint 5: CI/CD + Production deploy (Coolify + Traefik + auto-deploy)
                        → Merchant creates account, adds products, public catalog
+         ██ Security hardening: SSH, fail2ban, CORS, rate limiting, RLS enforcement
+         ██ Dokploy → Coolify migration + Tailscale VPN
 
-PHASE 1  ██ Sprint 6:  AI images (Photoroom) + Inventory
+PHASE 1  ██ Sprint 6:  AI images (fal.ai rembg + Bria) + BCV rate + Inventory  ← IN PROGRESS
          ██ Sprint 7:  Complete checkout (Pago Movil, Zelle, screenshot)
          ██ Sprint 8:  Orders + WhatsApp deep links
          ██ Sprint 9:  Onboarding + Excel import + Polish
@@ -436,7 +437,7 @@ PHASE 4  ██ Sprint 22-23: Wakit + WhatsApp bot
 | Domain | SSL, catalog URLs, email, Clerk config | Founder |
 | Clerk account | Auth (Sprint 3) | Technical (needs domain) |
 | Cloudflare account | Catalog edge (Sprint 5) | Technical (needs domain) |
-| Photoroom account | AI images (Sprint 6) | Technical |
+| fal.ai account | AI images (Sprint 6) | Technical |
 | Brand identity (logo, colors) | All UI work | Designer/Founder |
 
 **The next immediate step is Sprint 2**: founder decisions + monorepo scaffolding. Without a domain and external accounts, development cannot proceed beyond scaffolding.
