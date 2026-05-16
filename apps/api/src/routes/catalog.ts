@@ -26,6 +26,7 @@ async function resolveTenant(slug: string) {
       slug: tenants.slug,
       description: tenants.description,
       logoUrl: tenants.logoUrl,
+      settings: tenants.settings,
     })
     .from(tenants)
     .where(eq(tenants.slug, slug))
