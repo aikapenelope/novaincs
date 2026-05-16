@@ -1,61 +1,111 @@
 <script setup lang="ts">
 /**
- * Product detail page — /p/:slug
- * Server-side rendered for SEO. Shareable via WhatsApp.
+ * Product detail — /t/:tenantSlug/p/:slug
  *
- * TODO: Fetch real product data from API when tenant resolution is wired up.
+ * Fetches real product data from the API. Includes add-to-cart button
+ * and variant selector. SEO meta tags for WhatsApp/social sharing.
  */
 
 const route = useRoute();
-const slug = route.params.slug as string;
+const { slug: tenantSlug, store, fetchStore } = useTenant();
+const { get } = useApi();
+const cart = useCart(tenantSlug.value);
 
-// Placeholder product data.
-const product = ref({
-  id: "placeholder-1",
-  name: "Producto de ejemplo",
-  slug,
-  description: "Descripcion del producto. Aqui va el detalle completo.",
-  priceUsd: "25.00",
-  priceBs: "950.00",
-  costUsd: null,
-  stock: 10,
-  hasVariants: false,
-  images: [] as { url: string; alt: string }[],
-  variants: [] as { id: string; name: string; stock: number; priceUsd: string | null }[],
-  category: null as { name: string; slug: string } | null,
-});
+await fetchStore();
+
+const productSlug = route.params.slug as string;
+
+interface Variant {
+  id: string;
+  name: string;
+  stock: number;
+  priceUsd: string | null;
+  priceBs: string | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  priceUsd: string | null;
+  priceBs: string | null;
+  stock: number;
+  hasVariants: boolean;
+  images: { url: string }[];
+  variants: Variant[];
+}
+
+const { data: product, error: fetchError } = await useAsyncData(
+  `product-${tenantSlug.value}-${productSlug}`,
+  () => get<Product>(`/catalog/${tenantSlug.value}/products/${productSlug}`),
+);
 
 const selectedVariant = ref<string | null>(null);
 
 const effectivePrice = computed(() => {
+  if (!product.value) return "0";
   if (selectedVariant.value && product.value.variants.length > 0) {
     const v = product.value.variants.find((v) => v.id === selectedVariant.value);
     if (v?.priceUsd) return v.priceUsd;
   }
-  return product.value.priceUsd;
+  return product.value.priceUsd ?? "0";
 });
 
-const isInStock = computed(() => {
+const effectivePriceBs = computed(() => {
+  if (!product.value) return null;
+  if (selectedVariant.value && product.value.variants.length > 0) {
+    const v = product.value.variants.find((v) => v.id === selectedVariant.value);
+    if (v?.priceBs) return v.priceBs;
+  }
+  return product.value.priceBs;
+});
+
+const effectiveStock = computed(() => {
+  if (!product.value) return 0;
   if (selectedVariant.value) {
     const v = product.value.variants.find((v) => v.id === selectedVariant.value);
-    return (v?.stock ?? 0) > 0;
+    return v?.stock ?? 0;
   }
-  return product.value.stock > 0;
+  return product.value.stock;
 });
 
-// SEO meta tags for WhatsApp/social sharing.
+const isInStock = computed(() => effectiveStock.value > 0);
+
+const added = ref(false);
+
+function addToCart() {
+  if (!product.value || !isInStock.value) return;
+
+  const p = product.value;
+  const variant = selectedVariant.value
+    ? p.variants.find((v) => v.id === selectedVariant.value)
+    : null;
+
+  cart.addItem({
+    productId: p.id,
+    variantId: variant?.id ?? null,
+    name: p.name,
+    variantName: variant?.name ?? null,
+    priceUsd: effectivePrice.value,
+    priceBs: effectivePriceBs.value,
+    imageUrl: p.images[0]?.url ?? null,
+    stock: effectiveStock.value,
+  });
+
+  added.value = true;
+  setTimeout(() => (added.value = false), 2000);
+}
+
 useHead({
-  title: `${product.value.name} — Qyne`,
+  title: product.value ? `${product.value.name} — ${store.value?.name || "Qyne"}` : "Producto",
   meta: [
-    { name: "description", content: product.value.description || product.value.name },
-    { property: "og:title", content: product.value.name },
-    { property: "og:description", content: product.value.description || "" },
+    { name: "description", content: product.value?.description || "" },
+    { property: "og:title", content: product.value?.name || "" },
+    { property: "og:description", content: product.value?.description || "" },
     { property: "og:type", content: "product" },
-    {
-      property: "og:image",
-      content: product.value.images[0]?.url || "",
-    },
-    { property: "product:price:amount", content: product.value.priceUsd || "" },
+    { property: "og:image", content: product.value?.images[0]?.url || "" },
+    { property: "product:price:amount", content: product.value?.priceUsd || "" },
     { property: "product:price:currency", content: "USD" },
   ],
 });
@@ -63,10 +113,13 @@ useHead({
 
 <template>
   <div class="product-detail">
-    <NuxtLink to="/" class="back-link">&larr; Volver al catalogo</NuxtLink>
+    <NuxtLink :to="`/t/${tenantSlug}`" class="back-link">&larr; Volver al catalogo</NuxtLink>
 
-    <div class="product-layout">
-      <!-- Image gallery -->
+    <div v-if="fetchError" class="error-state">
+      <h1>Producto no encontrado</h1>
+    </div>
+
+    <div v-else-if="product" class="product-layout">
       <div class="product-gallery">
         <div v-if="product.images.length > 0" class="gallery-main">
           <img :src="product.images[0]?.url" :alt="product.name" />
@@ -74,17 +127,14 @@ useHead({
         <div v-else class="gallery-placeholder">Sin imagen</div>
       </div>
 
-      <!-- Product info -->
       <div class="product-info">
-        <p v-if="product.category" class="product-category">{{ product.category.name }}</p>
         <h1>{{ product.name }}</h1>
 
         <div class="product-price">
           <span class="price-usd">${{ effectivePrice }}</span>
-          <span v-if="product.priceBs" class="price-bs">Bs {{ product.priceBs }}</span>
+          <span v-if="effectivePriceBs" class="price-bs">Bs {{ effectivePriceBs }}</span>
         </div>
 
-        <!-- Variant selector -->
         <div v-if="product.hasVariants && product.variants.length > 0" class="variant-selector">
           <label>Selecciona una opcion:</label>
           <div class="variant-options">
@@ -101,24 +151,24 @@ useHead({
           </div>
         </div>
 
-        <!-- Stock status -->
         <p v-if="isInStock" class="in-stock">Disponible</p>
         <p v-else class="out-of-stock">Agotado</p>
 
-        <!-- Description -->
         <div v-if="product.description" class="product-description">
           <p>{{ product.description }}</p>
         </div>
 
-        <!-- WhatsApp deep link (MVP checkout) -->
-        <a
+        <button
           v-if="isInStock"
-          :href="`https://wa.me/?text=${encodeURIComponent(`Hola! Me interesa: ${product.name} ($${effectivePrice})`)}`"
-          target="_blank"
-          class="whatsapp-btn"
+          class="add-to-cart-btn"
+          :disabled="product.hasVariants && !selectedVariant"
+          @click="addToCart"
         >
-          Comprar por WhatsApp
-        </a>
+          {{ added ? "Agregado!" : "Agregar al carrito" }}
+        </button>
+        <p v-if="product.hasVariants && !selectedVariant && isInStock" class="select-hint">
+          Selecciona una opcion para agregar al carrito
+        </p>
       </div>
     </div>
   </div>
@@ -129,6 +179,7 @@ useHead({
   max-width: 1000px;
   margin: 0 auto;
   padding: 1rem;
+  padding-bottom: 5rem;
 }
 
 .back-link {
@@ -141,6 +192,11 @@ useHead({
 
 .back-link:hover {
   color: #111827;
+}
+
+.error-state {
+  text-align: center;
+  padding: 3rem 1rem;
 }
 
 .product-layout {
@@ -170,14 +226,6 @@ useHead({
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-}
-
-.product-category {
-  font-size: 0.75rem;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
 }
 
 .product-info h1 {
@@ -269,19 +317,32 @@ useHead({
   line-height: 1.6;
 }
 
-.whatsapp-btn {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background: #25d366;
+.add-to-cart-btn {
+  display: block;
+  width: 100%;
+  padding: 0.875rem;
+  background: #111827;
   color: white;
+  border: none;
   border-radius: 0.5rem;
-  text-decoration: none;
   font-weight: 600;
   font-size: 1rem;
-  transition: background 0.2s;
+  cursor: pointer;
 }
 
-.whatsapp-btn:hover {
-  background: #1da851;
+.add-to-cart-btn:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.add-to-cart-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.select-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  text-align: center;
 }
 </style>

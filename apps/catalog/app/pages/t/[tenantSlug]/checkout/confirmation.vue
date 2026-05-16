@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * Order confirmation page — /checkout/confirmation
+ * Order confirmation — /t/:tenantSlug/checkout/confirmation
  *
- * Screen 5 from doc 04: Shows order number, status, and a WhatsApp
- * deep link button that opens a chat with the merchant with a
- * pre-filled structured order message.
+ * WhatsApp deep link uses the real merchant phone from store settings.
+ * Order data comes from the real API response stored in sessionStorage.
  */
 
+const { slug: tenantSlug } = useTenant();
 const router = useRouter();
 
 interface OrderData {
@@ -17,6 +17,9 @@ interface OrderData {
   paymentMethod: string;
   buyerName: string;
   buyerPhone: string;
+  merchantPhone: string;
+  tenantSlug: string;
+  storeName: string;
   items: {
     name: string;
     variantName: string | null;
@@ -30,14 +33,11 @@ const order = ref<OrderData | null>(null);
 onMounted(() => {
   const saved = sessionStorage.getItem("qyne-order");
   if (!saved) {
-    router.replace("/");
+    router.replace(`/t/${tenantSlug.value}`);
     return;
   }
   order.value = JSON.parse(saved) as OrderData;
 });
-
-// TODO: Get merchant phone from tenant settings when multi-tenant is wired.
-const merchantPhone = "584141234567";
 
 const paymentMethodLabel = computed(() => {
   switch (order.value?.paymentMethod) {
@@ -53,8 +53,8 @@ const paymentMethodLabel = computed(() => {
 });
 
 /**
- * Generate the WhatsApp deep link with a structured order message.
- * Format follows doc 04 specification.
+ * WhatsApp deep link with structured order message.
+ * Uses the real merchant phone from store settings.
  */
 const whatsappUrl = computed(() => {
   if (!order.value) return "#";
@@ -72,7 +72,7 @@ const whatsappUrl = computed(() => {
     : `Total: $${o.totalUsd.toFixed(2)}`;
 
   const message = [
-    `Hola! Acabo de hacer el pedido ${o.orderNumber} en tu tienda.`,
+    `Hola! Acabo de hacer el pedido ${o.orderNumber} en ${o.storeName || "tu tienda"}.`,
     "",
     "Mi pedido:",
     itemLines,
@@ -81,7 +81,9 @@ const whatsappUrl = computed(() => {
     `Pago: ${paymentMethodLabel.value}`,
   ].join("\n");
 
-  return `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
+  // Use merchant phone if available, otherwise open WhatsApp without a number.
+  const phone = o.merchantPhone ? o.merchantPhone.replace(/[^0-9]/g, "") : "";
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 });
 
 useHead({ title: "Pedido confirmado — Qyne" });
@@ -96,16 +98,25 @@ useHead({ title: "Pedido confirmado — Qyne" });
       <div class="order-summary">
         <p class="order-number">Pedido {{ order.orderNumber }}</p>
         <p class="order-total">${{ order.totalUsd.toFixed(2) }}</p>
+        <p v-if="order.totalBs" class="order-total-bs">Bs {{ order.totalBs.toFixed(2) }}</p>
         <p class="order-status">Estado: Pago en verificacion</p>
       </div>
 
       <p class="confirmation-text">El vendedor revisara tu pago y te confirmara por WhatsApp.</p>
 
-      <a :href="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-btn">
+      <a
+        v-if="order.merchantPhone"
+        :href="whatsappUrl"
+        target="_blank"
+        rel="noopener"
+        class="whatsapp-btn"
+      >
         Enviar pedido por WhatsApp
       </a>
 
-      <NuxtLink to="/" class="continue-link">Volver al catalogo</NuxtLink>
+      <p v-else class="no-phone-note">El vendedor te contactara al numero que proporcionaste.</p>
+
+      <NuxtLink :to="`/t/${tenantSlug}`" class="continue-link">Volver al catalogo</NuxtLink>
     </div>
   </div>
 </template>
@@ -117,7 +128,6 @@ useHead({ title: "Pedido confirmado — Qyne" });
   padding: 2rem 1rem;
   text-align: center;
 }
-
 .success-icon {
   width: 64px;
   height: 64px;
@@ -131,13 +141,11 @@ useHead({ title: "Pedido confirmado — Qyne" });
   font-size: 2rem;
   font-weight: 700;
 }
-
 h1 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
 }
-
 .order-summary {
   padding: 1rem;
   background: #f9fafb;
@@ -145,31 +153,31 @@ h1 {
   border-radius: 0.5rem;
   margin-bottom: 1.5rem;
 }
-
 .order-number {
   font-weight: 600;
   font-size: 1.125rem;
   margin-bottom: 0.25rem;
 }
-
 .order-total {
   font-size: 1.5rem;
   font-weight: 700;
+  margin-bottom: 0.125rem;
+}
+.order-total-bs {
+  font-size: 1rem;
+  color: #6b7280;
   margin-bottom: 0.25rem;
 }
-
 .order-status {
   font-size: 0.875rem;
   color: #6b7280;
 }
-
 .confirmation-text {
   font-size: 0.875rem;
   color: #6b7280;
   margin-bottom: 1.5rem;
   line-height: 1.5;
 }
-
 .whatsapp-btn {
   display: block;
   width: 100%;
@@ -181,20 +189,21 @@ h1 {
   font-weight: 600;
   font-size: 1rem;
   margin-bottom: 1rem;
-  transition: background 0.2s;
 }
-
 .whatsapp-btn:hover {
   background: #1da851;
 }
-
+.no-phone-note {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
 .continue-link {
   display: inline-block;
   color: #6b7280;
   text-decoration: none;
   font-size: 0.875rem;
 }
-
 .continue-link:hover {
   color: #111827;
 }

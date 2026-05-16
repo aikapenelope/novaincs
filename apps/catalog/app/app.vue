@@ -1,12 +1,20 @@
 <script setup lang="ts">
-// TODO: Resolve tenant slug from subdomain or URL path when multi-tenant routing is wired.
-const tenantSlug = "demo";
-const { itemCount, totalUsd } = useCart(tenantSlug);
+const route = useRoute();
+const tenantSlug = computed(() => (route.params.tenantSlug as string) || "");
+const cart = computed(() => {
+  if (!tenantSlug.value) return { itemCount: ref(0), totalUsd: ref(0) };
+  return useCart(tenantSlug.value);
+});
 </script>
 
 <template>
   <div>
     <NuxtPage />
-    <CartBar :item-count="itemCount" :total-usd="totalUsd" />
+    <CartBar
+      v-if="tenantSlug"
+      :item-count="cart.itemCount.value"
+      :total-usd="cart.totalUsd.value"
+      :cart-url="`/t/${tenantSlug}/cart`"
+    />
   </div>
 </template>

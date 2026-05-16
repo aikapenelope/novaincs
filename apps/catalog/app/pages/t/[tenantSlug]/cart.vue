@@ -1,29 +1,27 @@
 <script setup lang="ts">
 /**
- * Cart detail page — /cart
+ * Cart detail — /t/:tenantSlug/cart
  *
- * Shows all items in the cart with quantity controls (+/-),
- * subtotal in USD and Bs, and a "Continue to checkout" button.
- *
- * Design follows doc 04 Screen 2: Cart Detail.
+ * Real cart connected to useCart composable. No placeholders.
  */
 
-// TODO: Get tenant slug from route/store when multi-tenant routing is wired.
-const tenantSlug = "demo";
-const { items, updateQuantity, removeItem, totalUsd, totalBs, itemCount } = useCart(tenantSlug);
+const { slug: tenantSlug } = useTenant();
+const { items, updateQuantity, removeItem, totalUsd, totalBs, itemCount } = useCart(
+  tenantSlug.value,
+);
 
 useHead({ title: "Tu carrito — Qyne" });
 </script>
 
 <template>
   <div class="cart-page">
-    <NuxtLink to="/" class="back-link">&larr; Seguir comprando</NuxtLink>
+    <NuxtLink :to="`/t/${tenantSlug}`" class="back-link">&larr; Seguir comprando</NuxtLink>
 
     <h1>Tu carrito</h1>
 
     <div v-if="itemCount === 0" class="cart-empty">
       <p>Tu carrito esta vacio.</p>
-      <NuxtLink to="/" class="continue-shopping">Ver catalogo</NuxtLink>
+      <NuxtLink :to="`/t/${tenantSlug}`" class="continue-shopping">Ver catalogo</NuxtLink>
     </div>
 
     <template v-else>
@@ -82,7 +80,9 @@ useHead({ title: "Tu carrito — Qyne" });
         </div>
       </div>
 
-      <NuxtLink to="/checkout" class="checkout-btn">Continuar al pago &rarr;</NuxtLink>
+      <NuxtLink :to="`/t/${tenantSlug}/checkout`" class="checkout-btn">
+        Continuar al pago &rarr;
+      </NuxtLink>
     </template>
   </div>
 </template>
@@ -94,7 +94,6 @@ useHead({ title: "Tu carrito — Qyne" });
   padding: 1rem;
   padding-bottom: 6rem;
 }
-
 .back-link {
   display: inline-block;
   margin-bottom: 1rem;
@@ -102,23 +101,19 @@ useHead({ title: "Tu carrito — Qyne" });
   text-decoration: none;
   font-size: 0.875rem;
 }
-
 .back-link:hover {
   color: #111827;
 }
-
 h1 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
 }
-
 .cart-empty {
   text-align: center;
   padding: 3rem 1rem;
   color: #6b7280;
 }
-
 .continue-shopping {
   display: inline-block;
   margin-top: 1rem;
@@ -129,14 +124,12 @@ h1 {
   text-decoration: none;
   font-size: 0.875rem;
 }
-
 .cart-items {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
-
 .cart-item {
   display: grid;
   grid-template-columns: 80px 1fr auto;
@@ -146,14 +139,12 @@ h1 {
   border-radius: 0.5rem;
   align-items: center;
 }
-
 .cart-item-image img {
   width: 80px;
   height: 80px;
   object-fit: cover;
   border-radius: 0.375rem;
 }
-
 .image-placeholder {
   width: 80px;
   height: 80px;
@@ -165,35 +156,29 @@ h1 {
   color: #9ca3af;
   font-size: 0.75rem;
 }
-
 .cart-item-name {
   font-weight: 500;
   font-size: 0.875rem;
   margin-bottom: 0.125rem;
 }
-
 .cart-item-variant {
   font-size: 0.75rem;
   color: #6b7280;
   margin-bottom: 0.25rem;
 }
-
 .cart-item-price {
   font-weight: 600;
   font-size: 0.875rem;
 }
-
 .cart-item-controls {
   text-align: right;
 }
-
 .quantity-controls {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
 }
-
 .qty-btn {
   width: 32px;
   height: 32px;
@@ -206,28 +191,23 @@ h1 {
   align-items: center;
   justify-content: center;
 }
-
 .qty-btn:hover:not(:disabled) {
   background: #f3f4f6;
 }
-
 .qty-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
-
 .qty-value {
   min-width: 1.5rem;
   text-align: center;
   font-weight: 500;
 }
-
 .cart-item-subtotal {
   font-weight: 600;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
 }
-
 .remove-btn {
   background: none;
   border: none;
@@ -236,17 +216,14 @@ h1 {
   cursor: pointer;
   padding: 0;
 }
-
 .remove-btn:hover {
   text-decoration: underline;
 }
-
 .cart-summary {
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
   margin-bottom: 1.5rem;
 }
-
 .summary-row {
   display: flex;
   justify-content: space-between;
@@ -254,11 +231,9 @@ h1 {
   font-size: 0.875rem;
   color: #6b7280;
 }
-
 .summary-bs {
   font-size: 0.8125rem;
 }
-
 .summary-total {
   font-size: 1.125rem;
   font-weight: 700;
@@ -267,11 +242,9 @@ h1 {
   padding-top: 0.75rem;
   margin-top: 0.5rem;
 }
-
 .summary-value {
   font-weight: 600;
 }
-
 .checkout-btn {
   display: block;
   width: 100%;
@@ -284,7 +257,6 @@ h1 {
   font-weight: 600;
   font-size: 1rem;
 }
-
 .checkout-btn:hover {
   background: #1f2937;
 }
