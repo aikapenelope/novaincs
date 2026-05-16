@@ -25,6 +25,7 @@ const createTenantSchema = z.object({
 
 const updateTenantSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  description: z.string().max(500).nullish(),
   settings: z.record(z.unknown()).optional(),
 });
 
@@ -167,6 +168,7 @@ tenantRoutes.patch("/:id", zValidator("json", updateTenantSchema), async (c) => 
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.name !== undefined) updates.name = body.name;
+  if (body.description !== undefined) updates.description = body.description;
   if (body.settings !== undefined) updates.settings = body.settings;
 
   const [updated] = await db
