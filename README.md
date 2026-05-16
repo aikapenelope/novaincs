@@ -65,12 +65,12 @@ Data:         PostgreSQL 16 + pgvector (business) | PostgreSQL (agno) | PostgreS
 | Agents               | Agno AgentOS (Python, model-agnostic)                 |
 | LLM                  | GPT-5 Mini (workhorse) + Groq Llama 4 (fast/cheap)    |
 | Voice                | Groq Whisper                                          |
-| Images               | Photoroom API                                         |
+| Images               | fal.ai (rembg + Bria RMBG 2.0)                        |
 | Workflows            | Prefect 3 (scheduled jobs) + BullMQ (real-time jobs)  |
 | WhatsApp             | Cloud API direct (Meta)                               |
 | Integrations         | MCP (Model Context Protocol)                          |
 | Email                | Resend                                                |
-| Deployment           | Dokploy (Traefik for SSL/routing)                     |
+| Deployment           | Coolify (Traefik for SSL/routing)                     |
 | Hosting              | Hetzner Cloud CX43 (8 vCPU, 16 GB RAM) — Helsinki     |
 | Catalog Edge         | Cloudflare Workers (SSR at edge, ~30ms TTFB)          |
 
@@ -116,7 +116,7 @@ All tiers run on one codebase. Feature flags control access.
 | Hetzner CX43      | 8 vCPU, 16 GB RAM, 160 GB NVMe (Helsinki) | ~€16/mo        |
 | Backups           | Automated                                 | ~€3/mo         |
 | Cloudflare        | Workers + R2 + DNS                        | $0 (free tier) |
-| External services | Clerk, Resend, Photoroom, OpenAI, Groq    | ~$46/mo        |
+| External services | Clerk, Resend, fal.ai, OpenAI, Groq       | ~$20/mo        |
 | **Total**         |                                           | **~€65/mo**    |
 
 Revenue at 200 users: ~$1,340/mo. Margin: 94.7%.
@@ -164,4 +164,3 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed sprint-by-sprint changes.
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
-

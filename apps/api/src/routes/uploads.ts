@@ -1,8 +1,12 @@
 import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "../app.js";
 import { getStorage, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "../storage/index.js";
 import { authMiddleware, tenantMiddleware } from "../middleware/auth.js";
+import { enqueueImageProcessing } from "../services/image-queue.js";
+import type { ImageProvider } from "../services/image-processor.js";
 
 export const uploadRoutes = new Hono<AppEnv>();
 
@@ -61,9 +65,23 @@ uploadRoutes.post("/image", async (c) => {
   const random = Math.random().toString(36).slice(2, 8);
   const key = `${tenantId}/${timestamp}-${random}.${ext}`;
 
-  // Upload.
+  // Upload original to storage.
   const storage = getStorage();
   const url = await storage.upload(key, buffer, magicType);
+
+  // Enqueue background removal if requested (default: yes with fal-rembg).
+  const removeBg = c.req.query("removeBg") !== "false";
+  const provider = (c.req.query("provider") as ImageProvider) || "fal-rembg";
+  let jobId: string | null = null;
+
+  if (removeBg) {
+    jobId = await enqueueImageProcessing({
+      imageUrl: url,
+      originalKey: key,
+      tenantId,
+      provider,
+    });
+  }
 
   return c.json({
     data: {
@@ -71,6 +89,41 @@ uploadRoutes.post("/image", async (c) => {
       key,
       contentType: magicType,
       size: file.size,
+      processing: jobId ? { jobId, provider, status: "queued" } : null,
+    },
+  });
+});
+
+/**
+ * GET /uploads/processing/:jobId — Check image processing status.
+ *
+ * Returns the job state: queued, processing, completed (with processed URL), or failed.
+ */
+uploadRoutes.get("/processing/:jobId", async (c) => {
+  const jobId = c.req.param("jobId");
+  const queue = (await import("../services/image-queue.js")).getImageQueue();
+
+  if (!queue) {
+    return c.json({ error: { message: "Processing queue unavailable", status: 503 } }, 503);
+  }
+
+  const job = await queue.getJob(jobId);
+  if (!job) {
+    return c.json({ error: { message: "Job not found", status: 404 } }, 404);
+  }
+
+  const state = await job.getState();
+  const result = job.returnvalue;
+
+  return c.json({
+    data: {
+      jobId,
+      state,
+      provider: job.data.provider,
+      ...(state === "completed" && result
+        ? { processedUrl: result.processedUrl, durationMs: result.durationMs }
+        : {}),
+      ...(state === "failed" ? { error: job.failedReason } : {}),
     },
   });
 });
