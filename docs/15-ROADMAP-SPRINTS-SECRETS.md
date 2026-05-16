@@ -402,9 +402,11 @@ DONE     ██ Sprint 5: CI/CD + Production deploy (Coolify + Traefik + auto-de
          ██ Security hardening: SSH, fail2ban, CORS, rate limiting, RLS enforcement
          ██ Dokploy → Coolify migration + Tailscale VPN
 
-PHASE 1  ██ Sprint 6:  AI images (fal.ai rembg + Bria) + BCV rate + Inventory  ← IN PROGRESS
-         ██ Sprint 7:  Complete checkout (Pago Movil, Zelle, screenshot)
-         ██ Sprint 8:  Orders + WhatsApp deep links
+PHASE 1  ██ Sprint 6:  AI images (fal.ai) + Inventory adjustments  ← DONE (code exists)
+           Remaining:  BCV dual pricing (ve.dolarapi.com)
+         ██ Sprint 7:  Checkout + Orders + Payments  ← PARTIALLY DONE (routes exist)
+           Remaining:  Cart (frontend), stock reservation, WhatsApp deep links
+         ██ Sprint 8:  Orders dashboard + WhatsApp deep links
          ██ Sprint 9:  Onboarding + Excel import + Polish
                        → BETA LAUNCH (10-20 merchants)
 
