@@ -4,6 +4,27 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Production Audit Fixes — May 16, 2026
+
+Full audit of repo, Pulumi stack, and live VPS. See `docs/17-PRODUCTION-AUDIT-MAY2026.md` for details.
+
+### Fixed (PR #25)
+
+- **R2 storage adapter** — replaced broken `fetch()` placeholder with `@aws-sdk/client-s3` (`PutObjectCommand`/`DeleteObjectCommand`). Image uploads to Cloudflare R2 now work.
+- **Deep health check** — `/health` verifies PostgreSQL (`SELECT 1`) and Redis (`PING`). Returns 503 when DB is down, latency per check. Coolify/Traefik can now detect real failures.
+- **Stock reservation cleanup** — BullMQ worker runs every 15 min, releases stock for expired unpaid orders, records inventory movements, marks orders as `expired`. Prevents phantom out-of-stock.
+
+### Identified (deferred to hardening phase)
+
+- SSH open to `0.0.0.0/0` (restrict to Tailscale before Sprint 15)
+- Backups local-only, no offsite (fix before Sprint 9)
+- Rate limiter in-memory, not Redis (fix before Sprint 9)
+- RLS context may not persist across pooled connections (fix before Sprint 9)
+- CI typecheck `continue-on-error: true` silences real errors
+- No observability (Sentry, metrics, alerting)
+
+---
+
 ## Sprint 4 Hardening — May 2026
 
 ### API Fixes
