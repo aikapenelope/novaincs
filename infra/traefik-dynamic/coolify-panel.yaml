@@ -1,0 +1,20 @@
+# Coolify panel route - deploy.martes.app
+http:
+  routers:
+    coolify-panel-http:
+      rule: "Host(`deploy.martes.app`)"
+      entryPoints:
+        - http
+      service: coolify-panel
+    coolify-panel-https:
+      rule: "Host(`deploy.martes.app`)"
+      entryPoints:
+        - https
+      service: coolify-panel
+      tls:
+        certResolver: letsencrypt
+  services:
+    coolify-panel:
+      loadBalancer:
+        servers:
+          - url: "http://coolify:8080"

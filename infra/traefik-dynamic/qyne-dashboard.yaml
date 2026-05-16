@@ -1,0 +1,19 @@
+http:
+  routers:
+    qyne-dashboard-http:
+      rule: "Host(`app.martes.app`)"
+      entryPoints:
+        - http
+      service: qyne-dashboard
+    qyne-dashboard-https:
+      rule: "Host(`app.martes.app`)"
+      entryPoints:
+        - https
+      service: qyne-dashboard
+      tls:
+        certResolver: letsencrypt
+  services:
+    qyne-dashboard:
+      loadBalancer:
+        servers:
+          - url: "http://ncsviwrk3w036ged275diea1:3001"

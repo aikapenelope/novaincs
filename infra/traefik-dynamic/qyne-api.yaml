@@ -1,0 +1,19 @@
+http:
+  routers:
+    qyne-api-http:
+      rule: "Host(`api.martes.app`)"
+      entryPoints:
+        - http
+      service: qyne-api
+    qyne-api-https:
+      rule: "Host(`api.martes.app`)"
+      entryPoints:
+        - https
+      service: qyne-api
+      tls:
+        certResolver: letsencrypt
+  services:
+    qyne-api:
+      loadBalancer:
+        servers:
+          - url: "http://re6fk4dx8qum7w9v7zh2qer5:3000"

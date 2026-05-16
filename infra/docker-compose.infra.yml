@@ -1,0 +1,204 @@
+# Qyne — Infrastructure Services (Data Layer)
+# Databases + Redis + Prefect. Managed separately from app containers.
+# App containers (API, Dashboard) are deployed by Coolify.
+#
+# Usage:
+#   cd /opt/nova
+#   docker compose -f docker-compose.infra.yml up -d
+#
+# Requires .env file with: PG_NOVA_PASSWORD, PG_AGNO_PASSWORD,
+# PG_PREFECT_PASSWORD, REDIS_PASSWORD
+
+services:
+  # === DATABASES ===
+
+  pg-nova:
+    image: pgvector/pgvector:0.8.2-pg16
+    container_name: pg-nova
+    restart: unless-stopped
+    ports: ["127.0.0.1:5432:5432"]
+    environment:
+      POSTGRES_USER: nova
+      POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
+      POSTGRES_DB: nova
+    volumes:
+      - /var/lib/nova/pg-nova:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=1536MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "log_min_duration_statement=1000"
+      - "-c"
+      - "log_statement=ddl"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nova"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [nova-net, coolify-net]
+
+  pg-agno:
+    image: agnohq/pgvector:16
+    container_name: pg-agno
+    restart: unless-stopped
+    ports: ["127.0.0.1:5433:5432"]
+    environment:
+      POSTGRES_USER: agno
+      POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
+      POSTGRES_DB: agno
+    volumes:
+      - /var/lib/nova/pg-agno:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "log_min_duration_statement=1000"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agno"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [nova-net, coolify-net]
+
+  pg-prefect:
+    image: postgres:16-alpine
+    container_name: pg-prefect
+    restart: unless-stopped
+    ports: ["127.0.0.1:5434:5432"]
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: ${PG_PREFECT_PASSWORD}
+      POSTGRES_DB: prefect
+    volumes:
+      - prefect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [nova-net, coolify-net]
+
+  # === CACHE & QUEUES ===
+
+  redis:
+    image: redis:7-alpine
+    container_name: nova-redis
+    restart: unless-stopped
+    ports: ["127.0.0.1:6379:6379"]
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --databases 4
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [nova-net, coolify-net]
+
+  # === WORKFLOW ENGINE ===
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    container_name: nova-prefect
+    restart: unless-stopped
+    ports: ["127.0.0.1:4200:4200"]
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:${PG_PREFECT_PASSWORD}@pg-prefect:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_API_URL: http://localhost:4200/api
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_PASSWORD: ${REDIS_PASSWORD}
+      PREFECT_REDIS_MESSAGING_DB: 2
+    command: ["/opt/nova/start.sh"]
+    volumes:
+      - /opt/nova/prefect-start.sh:/opt/nova/start.sh:ro
+      - /opt/nova/prefect-healthcheck.py:/opt/nova/healthcheck.py:ro
+    depends_on:
+      pg-prefect: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "/opt/nova/healthcheck.py"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [nova-net, coolify-net]
+
+volumes:
+  prefect_pgdata:
+  redis_data:
+
+networks:
+  nova-net:
+    name: nova-network
+  coolify-net:
+    name: coolify
+    external: true
