@@ -8,7 +8,7 @@
 const route = useRoute();
 const router = useRouter();
 const productId = route.params.id as string;
-const { get, patch, del } = useApi();
+const { get, patch, del, upload } = useApi();
 
 useHead({ title: "Editar producto — Qyne" });
 
@@ -122,21 +122,9 @@ async function handleImageUpload(event: Event) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const config = useRuntimeConfig();
-    const { authToken, tenantId } = useApi();
-    const response = await $fetch<{ data: { url: string; key: string } }>(
-      `${config.public.apiUrl}/uploads/image`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "X-Tenant-Id": tenantId,
-        },
-        body: formData,
-      },
-    );
+    const result = await upload<{ url: string; key: string }>("/uploads/image", formData);
 
-    form.images.push({ url: response.data.url, key: response.data.key });
+    form.images.push({ url: result.url, key: result.key });
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Error al subir imagen";
   } finally {

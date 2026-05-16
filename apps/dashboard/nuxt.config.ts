@@ -4,6 +4,18 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
 
+  // Clerk auth module.
+  modules: ["@clerk/nuxt"],
+
+  // Clerk configuration.
+  // Keys are read from environment variables:
+  //   NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  //   NUXT_CLERK_SECRET_KEY
+  clerk: {
+    signInForceRedirectUrl: "/",
+    signUpForceRedirectUrl: "/",
+  },
+
   // Runtime config (injected from environment variables)
   runtimeConfig: {
     public: {

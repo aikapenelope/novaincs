@@ -5,7 +5,7 @@
  */
 useHead({ title: "Nuevo producto — Qyne" });
 
-const { get, post } = useApi();
+const { get, post, upload } = useApi();
 const router = useRouter();
 
 const form = reactive({
@@ -79,20 +79,9 @@ async function handleImageUpload(event: Event) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const config = useRuntimeConfig();
-    const response = await $fetch<{ data: { url: string; key: string } }>(
-      `${config.public.apiUrl}/uploads/image`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${useApi().authToken}`,
-          "X-Tenant-Id": useApi().tenantId,
-        },
-        body: formData,
-      },
-    );
+    const result = await upload<{ url: string; key: string }>("/uploads/image", formData);
 
-    form.images.push({ url: response.data.url, key: response.data.key });
+    form.images.push({ url: result.url, key: result.key });
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Error al subir imagen";
   } finally {
