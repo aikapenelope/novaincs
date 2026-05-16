@@ -1,41 +1,64 @@
 <script setup lang="ts">
 /**
  * Product list page — /products
- * Shows all products for the current tenant in a grid.
- * Supports filtering by status and links to create/edit.
+ * Fetches real products from the API. Supports filtering by status.
  */
 useHead({ title: "Productos — Qyne" });
 
-const statusFilter = ref<string>("all");
+const { get } = useApi();
 
-// Placeholder data — will be replaced with API call.
-const products = ref([
-  {
-    id: "1",
-    name: "Camisa Polo Azul",
-    slug: "camisa-polo-azul",
-    priceUsd: "25.00",
-    stock: 12,
-    status: "active",
-    images: [] as { url: string }[],
+const statusFilter = ref("all");
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  priceUsd: string | null;
+  stock: number;
+  status: string;
+  images: { url: string }[];
+}
+
+interface ProductsResponse {
+  data: Product[];
+  total: number;
+}
+
+const {
+  data: productsData,
+  refresh,
+  status: fetchStatus,
+} = await useAsyncData(
+  "products",
+  async () => {
+    const params = new URLSearchParams();
+    if (statusFilter.value !== "all") {
+      params.set("status", statusFilter.value);
+    }
+    const query = params.toString();
+    return get<ProductsResponse>(`/products${query ? `?${query}` : ""}`);
   },
-]);
+  { watch: [statusFilter] },
+);
 
-const filteredProducts = computed(() => {
-  if (statusFilter.value === "all") return products.value;
-  return products.value.filter((p) => p.status === statusFilter.value);
-});
+const products = computed(() => (productsData.value as unknown as ProductsResponse)?.data ?? []);
+const total = computed(() => (productsData.value as unknown as ProductsResponse)?.total ?? 0);
+
+function onFilterChange() {
+  refresh();
+}
 </script>
 
 <template>
   <div class="products-page">
     <div class="page-header">
       <h1>Productos</h1>
+      <span class="product-count">{{ total }} {{ total === 1 ? "producto" : "productos" }}</span>
       <NuxtLink to="/products/new" class="btn-primary">+ Nuevo producto</NuxtLink>
     </div>
 
     <div class="filters">
-      <select v-model="statusFilter" class="filter-select">
+      <select v-model="statusFilter" class="filter-select" @change="onFilterChange">
         <option value="all">Todos</option>
         <option value="active">Activos</option>
         <option value="draft">Borradores</option>
@@ -43,18 +66,20 @@ const filteredProducts = computed(() => {
       </select>
     </div>
 
-    <div v-if="filteredProducts.length === 0" class="empty-state">
-      <p>No tienes productos aun.</p>
+    <div v-if="fetchStatus === 'pending'" class="loading">Cargando productos...</div>
+
+    <div v-else-if="products.length === 0" class="empty-state">
+      <p>No tienes productos {{ statusFilter !== "all" ? "con este estado" : "aun" }}.</p>
       <NuxtLink to="/products/new" class="btn-primary">Crear tu primer producto</NuxtLink>
     </div>
 
     <div v-else class="product-grid">
-      <div v-for="product in filteredProducts" :key="product.id" class="product-card">
+      <div v-for="product in products" :key="product.id" class="product-card">
         <NuxtLink :to="`/products/${product.id}`">
           <div class="card-image">
             <img
               v-if="product.images.length > 0"
-              :src="product.images[0]?.url"
+              :src="(product.images[0] as any)?.url"
               :alt="product.name"
             />
             <div v-else class="image-placeholder">Sin foto</div>
@@ -62,7 +87,7 @@ const filteredProducts = computed(() => {
           <div class="card-body">
             <h3>{{ product.name }}</h3>
             <div class="card-meta">
-              <span class="price">${{ product.priceUsd }}</span>
+              <span v-if="product.priceUsd" class="price">${{ product.priceUsd }}</span>
               <span class="stock">{{ product.stock }} uds</span>
             </div>
             <span :class="['status-badge', `status-${product.status}`]">
@@ -88,14 +113,20 @@ const filteredProducts = computed(() => {
 
 .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .page-header h1 {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.product-count {
+  font-size: 0.875rem;
+  color: #6b7280;
+  flex: 1;
 }
 
 .btn-primary {
@@ -123,6 +154,11 @@ const filteredProducts = computed(() => {
   border-radius: 0.375rem;
   font-size: 0.875rem;
   background: white;
+}
+
+.loading {
+  color: #6b7280;
+  padding: 2rem 0;
 }
 
 .empty-state {

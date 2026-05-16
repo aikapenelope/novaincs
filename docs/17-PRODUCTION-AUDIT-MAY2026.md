@@ -122,47 +122,46 @@ Qyne API running on http://localhost:3000
 
 ## 5. What's Next (Roadmap Position)
 
-Current position: **Sprint 6 (partially done)** — Phase 1 (MVP).
+Current position: **Pre-Sprint 9 blockers resolved** — Phase 1 (MVP).
 
-Sprints 1-5 are complete. The immediate next work is finishing the MVP to reach beta launch:
+Sprints 1-8 are complete. Auth, settings, and payment config are wired.
+
+```
+DONE     Sprint 1:  Infrastructure (Hetzner, Pulumi, DBs, Redis, Prefect)
+DONE     Sprint 2:  Monorepo scaffolding (pnpm + turborepo)
+DONE     Sprint 3:  Schema + Auth + RLS (13 tables, Clerk middleware)
+DONE     Sprint 4:  API core + Basic catalog + Dashboard products
+DONE     Sprint 5:  CI/CD + Production deploy (Coolify + Traefik)
+DONE     Audit:     R2 fix, health check, stock cleanup, doc 17
+DONE     Sprint 6:  AI images (fal.ai) + BCV dual pricing
+DONE     Sprint 7:  Cart + Checkout + WhatsApp deep link (catalog PWA)
+DONE     Sprint 8:  Orders dashboard + Payment verification + Daily stats
+DONE     Pre-9:     Clerk auth, payment config UI, tenant settings, zero placeholders
+
+NEXT     Sprint 9:  Onboarding wizard + Excel import + Polish → BETA LAUNCH
+```
 
 | Sprint | Status | What Remains |
 |---|---|---|
-| **Sprint 6** | Partially done | BCV dual pricing (`ve.dolarapi.com` integration) |
-| **Sprint 7** | Partially done | Cart frontend, WhatsApp deep links for checkout |
-| **Sprint 8** | Not started | Orders dashboard UI, order status management |
 | **Sprint 9** | Not started | Onboarding wizard, Excel/CSV import, polish |
-| | | **→ BETA LAUNCH (10-20 merchants)** |
+| | | **--> BETA LAUNCH (10-20 merchants)** |
 
-### Sprint 6 remaining: BCV Dual Pricing
+### Pre-Sprint 9 blockers (resolved)
 
-- Integrate `ve.dolarapi.com` API to fetch BCV exchange rate
-- Auto-convert USD prices to Bs on product display
-- Store rate history in `exchange_rates` table (already exists in schema)
-- BullMQ job to refresh rate every 15 minutes
-
-### Sprint 7 remaining: Cart + Checkout Frontend
-
-- Shopping cart component (localStorage + API sync, sticky bottom bar)
-- WhatsApp deep link generation with structured order message (`wa.me/...?text=...`)
-- Stock reservation already works in backend (POST `/checkout/:tenantSlug`)
-- Stock cleanup worker now handles expired reservations (PR #25)
-
-### Sprint 8: Orders Dashboard
-
-- Order list page with status filters (payment_pending, verified, shipped, delivered)
-- Order detail view (items, buyer info, payment screenshot)
-- Mark as paid / shipped / delivered actions
-- Daily sales total on home screen
+- Clerk auth integrated in dashboard (`@clerk/nuxt` module)
+- `useApi` uses real Clerk session tokens (zero placeholder tokens)
+- Product list page wired to real API
+- Payment config management UI (`/settings/payments`)
+- Tenant settings with WhatsApp phone (`/settings`)
+- Payment config CRUD API routes (`/payment-configs`)
 
 ### Sprint 9: Onboarding + Polish
 
 - Onboarding wizard (create store, configure payment methods, add first product)
-- Payment method configuration UI (Pago Movil/Zelle bank details)
 - Excel/CSV import (SheetJS parsing, validation, preview)
 - Catalog SEO (meta tags, Open Graph, JSON-LD)
 - Bug fixes with 2-3 real merchants
-- **→ BETA LAUNCH**
+- **--> BETA LAUNCH**
 
 ### Hardening items to weave in before beta (from this audit + doc 16)
 
