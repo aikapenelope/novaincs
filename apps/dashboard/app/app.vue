@@ -1,8 +1,46 @@
+<script setup lang="ts">
+/**
+ * Root app component.
+ *
+ * When signed in, resolves the user's tenant. If no tenant exists,
+ * redirects to the onboarding wizard.
+ */
+const { resolveTenant, tenantId } = useApi();
+const { isSignedIn } = useAuth();
+const router = useRouter();
+const route = useRoute();
+
+const isReady = ref(false);
+
+watch(
+  () => isSignedIn.value,
+  async (signedIn) => {
+    if (!signedIn) {
+      isReady.value = true;
+      return;
+    }
+    await resolveTenant();
+    // If user has no tenant and is not already on onboarding, redirect.
+    if (!tenantId.value && !route.path.startsWith("/onboarding")) {
+      router.replace("/onboarding");
+    }
+    isReady.value = true;
+  },
+  { immediate: true },
+);
+</script>
+
 <template>
   <Show when="signed-in">
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
+    <template v-if="isReady">
+      <NuxtLayout v-if="!$route.path.startsWith('/onboarding')">
+        <NuxtPage />
+      </NuxtLayout>
+      <NuxtPage v-else />
+    </template>
+    <div v-else class="loading-screen">
+      <p>Cargando...</p>
+    </div>
   </Show>
   <Show when="signed-out">
     <div class="auth-page">
@@ -16,6 +54,14 @@
 </template>
 
 <style scoped>
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
 .auth-page {
   min-height: 100vh;
   display: flex;

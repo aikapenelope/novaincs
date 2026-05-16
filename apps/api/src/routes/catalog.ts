@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, ilike, count } from "drizzle-orm";
+import { eq, and, desc, ilike, count, sql } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { tenants, paymentConfigs } from "../db/schema/tenants.js";
@@ -68,7 +68,22 @@ catalogRoutes.get("/:tenantSlug/products", zValidator("query", listSchema), asyn
 
   const conditions = [eq(products.tenantId, tenant.id), eq(products.status, "active")];
   if (query.categoryId) conditions.push(eq(products.categoryId, query.categoryId));
-  if (query.search) conditions.push(ilike(products.name, `%${query.search}%`));
+  if (query.search) {
+    // Full-text search on name + description using Spanish dictionary.
+    // Falls back to ILIKE for single-character queries.
+    if (query.search.length >= 3) {
+      const tsQuery = query.search
+        .trim()
+        .split(/\s+/)
+        .map((w) => `${w}:*`)
+        .join(" & ");
+      conditions.push(
+        sql`to_tsvector('spanish', coalesce(${products.name}, '') || ' ' || coalesce(${products.description}, '')) @@ to_tsquery('spanish', ${tsQuery})`,
+      );
+    } else {
+      conditions.push(ilike(products.name, `%${query.search}%`));
+    }
+  }
 
   const where = and(...conditions);
 

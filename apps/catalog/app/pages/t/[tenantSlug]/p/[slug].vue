@@ -108,6 +108,29 @@ useHead({
     { property: "product:price:amount", content: product.value?.priceUsd || "" },
     { property: "product:price:currency", content: "USD" },
   ],
+  script: product.value
+    ? [
+        {
+          type: "application/ld+json",
+          innerHTML: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.value.name,
+            description: product.value.description || undefined,
+            image: product.value.images[0]?.url || undefined,
+            offers: {
+              "@type": "Offer",
+              price: product.value.priceUsd || undefined,
+              priceCurrency: "USD",
+              availability:
+                product.value.stock > 0
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+            },
+          }),
+        },
+      ]
+    : [],
 });
 </script>
 

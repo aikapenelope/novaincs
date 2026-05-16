@@ -268,6 +268,76 @@ productRoutes.delete("/:id", async (c) => {
   return c.json({ data: { id: updated.id, deleted: true } });
 });
 
+// --- Batch import ---
+
+const importProductSchema = z.object({
+  name: z.string().min(1).max(500),
+  priceUsd: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/)
+    .nullish(),
+  stock: z.number().int().min(0).default(0),
+  sku: z.string().max(100).nullish(),
+  description: z.string().nullish(),
+});
+
+const batchImportSchema = z.object({
+  products: z.array(importProductSchema).min(1).max(500),
+});
+
+/**
+ * POST /products/import — Batch import products from CSV/Excel.
+ *
+ * Accepts an array of products. Generates slugs automatically.
+ * Skips products with duplicate slugs within the batch or existing in DB.
+ * Returns the count of imported and skipped products.
+ */
+productRoutes.post("/import", zValidator("json", batchImportSchema), async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const body = c.req.valid("json");
+  const db = getDb();
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const item of body.products) {
+    // Generate slug from name.
+    const slug = item.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    // Check if slug already exists for this tenant.
+    const [existing] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.tenantId, tenantId), eq(products.slug, slug)))
+      .limit(1);
+
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    await db.insert(products).values({
+      tenantId,
+      name: item.name,
+      slug,
+      priceUsd: item.priceUsd ?? null,
+      stock: item.stock,
+      sku: item.sku ?? null,
+      description: item.description ?? null,
+      status: "active",
+    });
+
+    imported++;
+  }
+
+  return c.json({ data: { imported, skipped, total: body.products.length } });
+});
+
 // --- Variant sub-routes ---
 
 /** Recalculate parent product's total stock from active variants. */

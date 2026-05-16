@@ -80,11 +80,22 @@ export function useApi() {
     return response.data;
   }
 
+  /**
+   * Resolve the current user's tenant.
+   * GET /tenants/me returns an array of memberships. For MVP, we use the first one.
+   */
   async function resolveTenant(): Promise<void> {
     if (tenantId.value) return;
     try {
-      const tenant = await get<{ id: string }>("/tenants/me");
-      tenantId.value = tenant.id;
+      interface Membership {
+        tenantId: string;
+        role: string;
+        tenant: { id: string; name: string; slug: string };
+      }
+      const memberships = await get<Membership[]>("/tenants/me");
+      if (memberships.length > 0 && memberships[0]) {
+        tenantId.value = memberships[0].tenantId;
+      }
     } catch {
       tenantId.value = null;
     }

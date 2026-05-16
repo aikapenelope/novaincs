@@ -39,7 +39,28 @@ useHead({
       name: "description",
       content: store.value?.description || "Explora nuestro catalogo de productos",
     },
+    { property: "og:title", content: store.value?.name || "Catalogo" },
+    {
+      property: "og:description",
+      content: store.value?.description || "Explora nuestro catalogo de productos",
+    },
+    { property: "og:type", content: "website" },
+    ...(store.value?.logoUrl ? [{ property: "og:image", content: store.value.logoUrl }] : []),
   ],
+  script: store.value
+    ? [
+        {
+          type: "application/ld+json",
+          innerHTML: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Store",
+            name: store.value.name,
+            description: store.value.description || undefined,
+            image: store.value.logoUrl || undefined,
+          }),
+        },
+      ]
+    : [],
 });
 </script>
 
