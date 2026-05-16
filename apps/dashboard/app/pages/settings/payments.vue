@@ -15,7 +15,7 @@ interface PaymentConfig {
   method: string;
   label: string | null;
   details: Record<string, string>;
-  isActive: string;
+  isActive: boolean;
   sortOrder: number;
 }
 
@@ -112,7 +112,7 @@ async function toggleCash() {
   feedback.value = null;
   try {
     if (cash.value) {
-      const newActive = cash.value.isActive === "true" ? "false" : "true";
+      const newActive = !cash.value.isActive;
       await patch(`/payment-configs/${cash.value.id}`, { isActive: newActive });
     } else {
       await post("/payment-configs", { method: "cash_on_delivery", details: {} });
@@ -188,9 +188,9 @@ async function toggleCash() {
       <h2>Efectivo al recibir</h2>
       <p class="cash-desc">Permite que los compradores paguen en efectivo al recibir su pedido.</p>
       <button class="btn-toggle" :disabled="isSubmitting" @click="toggleCash">
-        {{ cash?.isActive === "true" ? "Desactivar" : "Activar" }} efectivo
+        {{ cash?.isActive ? "Desactivar" : "Activar" }} efectivo
       </button>
-      <span v-if="cash?.isActive === 'true'" class="active-badge">Activo</span>
+      <span v-if="cash?.isActive" class="active-badge">Activo</span>
     </section>
   </div>
 </template>

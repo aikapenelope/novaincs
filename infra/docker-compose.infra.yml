@@ -154,7 +154,7 @@ services:
   # === WORKFLOW ENGINE ===
 
   prefect:
-    image: prefecthq/prefect:3-latest
+    image: prefecthq/prefect:3.6.29-python3.12
     container_name: nova-prefect
     restart: unless-stopped
     ports: ["127.0.0.1:4200:4200"]

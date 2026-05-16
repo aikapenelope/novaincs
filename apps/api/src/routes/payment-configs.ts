@@ -19,7 +19,7 @@ const upsertSchema = z.object({
   method: z.enum(["pago_movil", "zelle", "cash_on_delivery"]),
   label: z.string().max(100).nullish(),
   details: z.record(z.string()).default({}),
-  isActive: z.enum(["true", "false"]).default("true"),
+  isActive: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
 });
 
