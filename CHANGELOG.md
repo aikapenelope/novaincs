@@ -4,6 +4,70 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Sprint 9 — May 16, 2026
+
+**Beta launch readiness.** End-to-end flow works without technical intervention.
+
+### Onboarding (PR #33)
+
+- **Onboarding wizard** (`/onboarding`) — 3-step flow for new merchants: create store (name + auto-slug), configure Pago Movil/Zelle, add first product. Auto-detects users with no tenant and redirects.
+- **Product import** (`/products/import`) — upload CSV or Excel (.xlsx), client-side parsing with SheetJS, preview table, batch import up to 500 products. Auto-generates slugs, skips duplicates.
+- **Full-text search** — catalog product search upgraded from ILIKE to PostgreSQL `to_tsvector('spanish', ...)` with prefix matching.
+- **Catalog SEO** — OG tags on listing page, JSON-LD `Store` and `Product` schemas.
+
+### Bug fixes (PR #33)
+
+- **resolveTenant** — `GET /tenants/me` returns array of memberships, not single object. Dashboard now correctly reads first membership.
+- **Tenant update schema** — added `description` field. Settings page can now save store description.
+
+---
+
+## Pre-Sprint 9: Production Blockers — May 16, 2026
+
+### Auth & Settings (PR #32)
+
+- **Clerk auth** — installed `@clerk/nuxt`, sign-in/sign-out UI, real session JWT in all API calls.
+- **useApi rewrite** — replaced `dev-placeholder-token` with real Clerk `getToken()`. Zero placeholder values remain.
+- **Payment config CRUD** — `GET/POST/PATCH/DELETE /payment-configs` API routes + dashboard page (`/settings/payments`).
+- **Tenant settings** — dashboard page (`/settings`) for store name, description, WhatsApp phone.
+- **Product list** — wired to real API (was last remaining placeholder page).
+
+---
+
+## Sprint 8 — May 16, 2026
+
+### Orders Dashboard (PR #31)
+
+- **Orders list** (`/orders`) — all orders with status filters and pagination.
+- **Order detail** (`/orders/:id`) — items, buyer info (WhatsApp link), payment screenshot, verify/reject actions.
+- **Status transitions** — verified -> preparing -> shipped -> delivered, with cancel and stock release.
+- **Dashboard home** — real stats: today's sales, pending verifications, recent orders feed.
+
+---
+
+## Sprint 7 — May 16, 2026
+
+### Checkout Flow (PRs #28, #29, #30)
+
+- **Cart** — `useCart()` composable with localStorage persistence, sticky bottom bar, cart detail page.
+- **Checkout** — 5-screen flow: cart -> buyer info (name + phone) -> payment method -> confirmation.
+- **Pago Movil** — shows merchant bank details with "Copiar todo" button.
+- **WhatsApp deep link** — structured order message with items, total, payment method.
+- **Public catalog API** — `GET /catalog/:tenantSlug/products`, `/products/:slug`, `/payment-methods`.
+- **Tenant routing** — all catalog pages under `/t/:tenantSlug/...`, zero hardcoded values.
+
+---
+
+## Sprint 6 — May 16, 2026
+
+### BCV Dual Pricing (PR #28)
+
+- **Exchange rate service** — fetches official BCV USD/VES rate from `ve.dolarapi.com`.
+- **BullMQ worker** — refreshes rate every 15 min, immediate fetch on startup.
+- **API routes** — `GET /exchange-rates/current`, `/convert`, `/history`.
+
+---
+
 ## Production Audit Fixes — May 16, 2026
 
 Full audit of repo, Pulumi stack, and live VPS. See `docs/17-PRODUCTION-AUDIT-MAY2026.md` for details.
