@@ -13,9 +13,7 @@ export const inventoryMovements = pgTable(
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    productId: uuid("product_id")
-      .notNull()
-      .references(() => products.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     // Positive = stock in, negative = stock out
     quantity: integer("quantity").notNull(),
     reason: varchar("reason", { length: 50 }).notNull(),

@@ -162,7 +162,7 @@ catalogRoutes.get("/:tenantSlug/payment-methods", async (c) => {
       details: paymentConfigs.details,
     })
     .from(paymentConfigs)
-    .where(and(eq(paymentConfigs.tenantId, tenant.id), eq(paymentConfigs.isActive, "true")))
+    .where(and(eq(paymentConfigs.tenantId, tenant.id), eq(paymentConfigs.isActive, true)))
     .orderBy(paymentConfigs.sortOrder);
 
   return c.json({ data: configs });
