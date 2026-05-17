@@ -9,10 +9,11 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
+COPY src/ ./src/
 
 # Install production dependencies into a virtual environment.
 RUN python -m venv /app/.venv && \
-    /app/.venv/bin/pip install --no-cache-dir -e .
+    /app/.venv/bin/pip install --no-cache-dir .
 
 # --- Stage 2: Production runtime ---
 FROM python:3.12-slim AS runner
@@ -24,11 +25,10 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends libpq5 wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder.
+# Copy virtual environment from builder (includes installed nova-agents package).
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application source.
-COPY pyproject.toml ./
+# Copy source for uvicorn module resolution.
 COPY src/ ./src/
 
 ENV PATH="/app/.venv/bin:$PATH"

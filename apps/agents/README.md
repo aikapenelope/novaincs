@@ -64,7 +64,7 @@ uvicorn src.main:app --host 0.0.0.0 --port 8100 --reload
 
 4. The container is accessible via SSH tunnel:
    ```bash
-   ssh -L 8100:localhost:8100 root@204.168.169.254
+   ssh -L 8100:localhost:8100 root@<VPS_IP>
    # Then open http://localhost:8100/health
    ```
 

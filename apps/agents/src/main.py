@@ -20,8 +20,8 @@ from .agents.finance import create_finance_agent
 # Shared database for AgentOS (sessions, memory, traces).
 db = PostgresDb(db_url=AGNO_DB_URL)
 
-# Create agent instances.
-finance_agent = create_finance_agent()
+# Create agent instances (pass shared db to avoid duplicate pools).
+finance_agent = create_finance_agent(db)
 
 # --- Custom health/status endpoints ---
 

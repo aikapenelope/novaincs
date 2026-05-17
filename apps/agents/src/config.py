@@ -30,7 +30,7 @@ AGNO_DB_URL: str = os.environ.get(
 )
 
 # LLM providers
-OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_API_KEY: str = get_required_env("OPENROUTER_API_KEY")
 GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
 
 # Default model for agents (via OpenRouter)

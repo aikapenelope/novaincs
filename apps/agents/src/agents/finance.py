@@ -15,10 +15,7 @@ from agno.models.openrouter import OpenRouter
 from agno.db.postgres import PostgresDb
 from agno.tools import tool
 
-from ..config import AGNO_DB_URL, OPENROUTER_API_KEY, AGENTS_MODEL
-
-# Shared database connection for agent storage.
-db = PostgresDb(db_url=AGNO_DB_URL)
+from ..config import OPENROUTER_API_KEY, AGENTS_MODEL
 
 FINANCE_AGENT_INSTRUCTIONS = [
     "You are the Finance Agent for Nova, a commercial SaaS for Venezuelan merchants.",
@@ -52,8 +49,12 @@ def verify_payment_screenshot(image_url: str) -> str:
     )
 
 
-def create_finance_agent() -> Agent:
-    """Create and return the Finance Agent instance."""
+def create_finance_agent(db: PostgresDb) -> Agent:
+    """Create and return the Finance Agent instance.
+
+    Args:
+        db: Shared PostgresDb instance for session/memory storage.
+    """
     return Agent(
         id="finance-agent",
         name="Finance Agent",
