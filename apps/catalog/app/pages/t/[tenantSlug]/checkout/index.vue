@@ -8,11 +8,18 @@
 
 const { slug: tenantSlug } = useTenant();
 const { items, totalUsd, totalBs, itemCount } = useCart(tenantSlug.value);
+const { trackCheckoutStart } = useBeacon();
 const router = useRouter();
 
 if (import.meta.client && itemCount.value === 0) {
   router.replace(`/t/${tenantSlug.value}/cart`);
 }
+
+onMounted(() => {
+  if (itemCount.value > 0) {
+    trackCheckoutStart(itemCount.value, totalUsd.value);
+  }
+});
 
 const buyerName = useState("checkout-name", () => "");
 const buyerPhone = useState("checkout-phone", () => "");

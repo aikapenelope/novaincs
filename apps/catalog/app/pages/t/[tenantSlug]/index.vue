@@ -7,8 +7,13 @@
 
 const { slug, store, storeError, fetchStore } = useTenant();
 const { get } = useApi();
+const { trackPageView } = useBeacon();
 
 await fetchStore();
+
+onMounted(() => {
+  trackPageView("catalog_home");
+});
 
 interface Product {
   id: string;
