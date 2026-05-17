@@ -12,6 +12,7 @@ import {
   startCartAbandonmentWorker,
   stopCartAbandonmentWorker,
 } from "./services/cart-abandonment.js";
+import { startPaymentOcrWorker, stopPaymentOcrWorker } from "./services/payment-ocr.js";
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -22,6 +23,7 @@ startExchangeRateWorker();
 startEventWorker();
 startRfmScoringWorker();
 startCartAbandonmentWorker();
+startPaymentOcrWorker();
 
 // Graceful shutdown.
 const shutdown = async () => {
@@ -33,6 +35,7 @@ const shutdown = async () => {
     stopEventWorker(),
     stopRfmScoringWorker(),
     stopCartAbandonmentWorker(),
+    stopPaymentOcrWorker(),
   ]);
   process.exit(0);
 };
