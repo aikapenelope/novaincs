@@ -19,6 +19,7 @@ import { paymentConfigRoutes } from "./routes/payment-configs.js";
 import { customerRoutes } from "./routes/customers.js";
 import { beaconRoutes } from "./routes/beacon.js";
 import { briefingRoutes } from "./routes/briefing.js";
+import { receivablesRoutes } from "./routes/receivables.js";
 
 // Create the Hono app with typed environment bindings.
 export type AppEnv = {
@@ -74,6 +75,7 @@ app.route("/payment-configs", paymentConfigRoutes);
 app.route("/customers", customerRoutes);
 app.route("/beacon", beaconRoutes);
 app.route("/briefing", briefingRoutes);
+app.route("/receivables", receivablesRoutes);
 
 // Serve uploaded files in development (LocalStorageAdapter writes to .uploads/).
 // In production, images are served directly from Cloudflare R2.
