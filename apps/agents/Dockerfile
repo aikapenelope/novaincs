@@ -1,48 +1,34 @@
-# --- Stage 1: Install dependencies ---
-FROM python:3.12-slim AS builder
-
+# Nova Agents — Agno AgentOS container.
+# Same pattern as qyne-v1/services/agno/Dockerfile.
+FROM python:3.12-slim
 WORKDIR /app
 
-# Install build dependencies for psycopg (PostgreSQL driver).
-RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends gcc libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
+# System deps + Node.js (needed for MCP servers via npx).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl wget libpq5 nodejs npm && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-COPY src/ ./src/
+# Install Python dependencies.
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
 
-# Install production dependencies into a virtual environment.
-RUN python -m venv /app/.venv && \
-    /app/.venv/bin/pip install --no-cache-dir .
+# Create persistent data directory.
+RUN mkdir -p /app/data
 
-# --- Stage 2: Production runtime ---
-FROM python:3.12-slim AS runner
-
-WORKDIR /app
-
-# Runtime dependency for psycopg.
-RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends libpq5 wget && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy virtual environment from builder (includes installed nova-agents package).
-COPY --from=builder /app/.venv /app/.venv
-
-# Copy source for uvicorn module resolution.
-COPY src/ ./src/
-
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-ENV AGNO_TELEMETRY=false
+# Copy application source.
+COPY . .
 
 # Non-root user for security.
 RUN groupadd --system --gid 1001 qyne && \
-    useradd --system --uid 1001 --gid qyne qyne
+    useradd --system --uid 1001 --gid qyne qyne && \
+    chown -R qyne:qyne /app/data
 USER qyne
+
+ENV PYTHONUNBUFFERED=1
+ENV AGNO_TELEMETRY=false
 
 EXPOSE 8100
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8100/health || exit 1
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "2"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8100"]
