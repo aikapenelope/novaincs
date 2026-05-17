@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { errorHandler } from "./middleware/error-handler.js";
 import { rateLimiter } from "./middleware/rate-limit.js";
+import { securityHeaders } from "./middleware/security-headers.js";
 import { healthRoutes } from "./routes/health.js";
 import { tenantRoutes } from "./routes/tenants.js";
 import { productRoutes } from "./routes/products.js";
@@ -15,6 +16,8 @@ import { paymentRoutes } from "./routes/payments.js";
 import { exchangeRateRoutes } from "./routes/exchange-rates.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { paymentConfigRoutes } from "./routes/payment-configs.js";
+import { customerRoutes } from "./routes/customers.js";
+import { beaconRoutes } from "./routes/beacon.js";
 
 // Create the Hono app with typed environment bindings.
 export type AppEnv = {
@@ -29,6 +32,7 @@ const app = new Hono<AppEnv>();
 
 // --- Global middleware ---
 app.use("*", logger());
+app.use("*", securityHeaders);
 app.use("*", rateLimiter({ windowMs: 60_000, maxRequests: 100 }));
 
 // CORS: restrict to known origins in production, allow all in development.
@@ -66,6 +70,8 @@ app.route("/checkout", publicOrderRoutes);
 app.route("/exchange-rates", exchangeRateRoutes);
 app.route("/catalog", catalogRoutes);
 app.route("/payment-configs", paymentConfigRoutes);
+app.route("/customers", customerRoutes);
+app.route("/beacon", beaconRoutes);
 
 // Serve uploaded files in development (LocalStorageAdapter writes to .uploads/).
 // In production, images are served directly from Cloudflare R2.

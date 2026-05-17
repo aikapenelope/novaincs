@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { tenantMembers } from "../db/schema/tenants.js";
-import { setTenantContext } from "../db/tenant-context.js";
+import { setTenantContext, clearTenantContext } from "../db/tenant-context.js";
 
 /**
  * Clerk JWT verification middleware.
@@ -92,9 +92,22 @@ export const tenantMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   // Set RLS context so all subsequent queries are scoped to this tenant.
+  // Uses session-level set_config (false) so the setting persists across
+  // all queries in this request. Must be cleared in finally to prevent
+  // context leaking to the next request on this pooled connection.
   await setTenantContext(db, tenantId);
 
   c.set("tenantId", tenantId);
   c.set("memberRole", membership.role);
-  await next();
+
+  try {
+    await next();
+  } finally {
+    // Always clear tenant context when the request completes (or errors)
+    // to prevent the next request on this pooled connection from inheriting
+    // a stale tenant context.
+    await clearTenantContext(db).catch(() => {
+      // Swallow errors during cleanup — the connection may already be closed.
+    });
+  }
 });

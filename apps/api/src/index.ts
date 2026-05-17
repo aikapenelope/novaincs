@@ -6,6 +6,7 @@ import {
   startExchangeRateWorker,
   stopExchangeRateWorker,
 } from "./services/exchange-rate-worker.js";
+import { startEventWorker, stopEventWorker } from "./services/event-worker.js";
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -13,11 +14,17 @@ const port = Number(process.env.PORT) || 3000;
 startImageWorker();
 startStockCleanupWorker();
 startExchangeRateWorker();
+startEventWorker();
 
 // Graceful shutdown.
 const shutdown = async () => {
   console.log("Shutting down...");
-  await Promise.all([stopImageWorker(), stopStockCleanupWorker(), stopExchangeRateWorker()]);
+  await Promise.all([
+    stopImageWorker(),
+    stopStockCleanupWorker(),
+    stopExchangeRateWorker(),
+    stopEventWorker(),
+  ]);
   process.exit(0);
 };
 process.on("SIGTERM", shutdown);

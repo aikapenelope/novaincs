@@ -6,7 +6,6 @@ import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { orders, orderItems, payments } from "../db/schema/orders.js";
 import { products, productVariants } from "../db/schema/products.js";
-import { customers } from "../db/schema/customers.js";
 import { inventoryMovements } from "../db/schema/inventory.js";
 import { tenantMiddleware, authMiddleware } from "../middleware/auth.js";
 
@@ -88,237 +87,216 @@ publicOrderRoutes.post("/:tenantSlug", zValidator("json", createOrderSchema), as
   const tenantId = tenant.id;
 
   // Set RLS context for all subsequent queries.
-  const { setTenantContext } = await import("../db/tenant-context.js");
+  // Uses session-level setting; cleared after the request completes.
+  const { setTenantContext, clearTenantContext } = await import("../db/tenant-context.js");
   await setTenantContext(db, tenantId);
 
-  // Validate items and calculate totals.
-  const resolvedItems: {
-    productId: string;
-    variantId: string | null;
-    productName: string;
-    variantName: string | null;
-    quantity: number;
-    unitPriceUsd: string;
-    unitPriceBs: string | null;
-    currentStock: number;
-    isVariant: boolean;
-  }[] = [];
+  try {
+    // Validate items and calculate totals.
+    const resolvedItems: {
+      productId: string;
+      variantId: string | null;
+      productName: string;
+      variantName: string | null;
+      quantity: number;
+      unitPriceUsd: string;
+      unitPriceBs: string | null;
+      currentStock: number;
+      isVariant: boolean;
+    }[] = [];
 
-  for (const item of body.items) {
-    const [product] = await db
-      .select()
-      .from(products)
-      .where(and(eq(products.id, item.productId), eq(products.tenantId, tenantId)))
-      .limit(1);
-
-    if (!product) {
-      return c.json(
-        { error: { message: `Product not found: ${item.productId}`, status: 400 } },
-        400,
-      );
-    }
-
-    if (item.variantId) {
-      const [variant] = await db
+    for (const item of body.items) {
+      const [product] = await db
         .select()
-        .from(productVariants)
-        .where(
-          and(
-            eq(productVariants.id, item.variantId),
-            eq(productVariants.productId, item.productId),
-          ),
-        )
+        .from(products)
+        .where(and(eq(products.id, item.productId), eq(products.tenantId, tenantId)))
         .limit(1);
 
-      if (!variant) {
+      if (!product) {
         return c.json(
-          { error: { message: `Variant not found: ${item.variantId}`, status: 400 } },
+          { error: { message: `Product not found: ${item.productId}`, status: 400 } },
           400,
         );
       }
 
-      if (variant.stock < item.quantity) {
-        return c.json(
-          {
-            error: {
-              message: `Insufficient stock for ${product.name} - ${variant.name}: ${variant.stock} available, ${item.quantity} requested`,
-              status: 400,
+      if (item.variantId) {
+        const [variant] = await db
+          .select()
+          .from(productVariants)
+          .where(
+            and(
+              eq(productVariants.id, item.variantId),
+              eq(productVariants.productId, item.productId),
+            ),
+          )
+          .limit(1);
+
+        if (!variant) {
+          return c.json(
+            { error: { message: `Variant not found: ${item.variantId}`, status: 400 } },
+            400,
+          );
+        }
+
+        if (variant.stock < item.quantity) {
+          return c.json(
+            {
+              error: {
+                message: `Insufficient stock for ${product.name} - ${variant.name}: ${variant.stock} available, ${item.quantity} requested`,
+                status: 400,
+              },
             },
-          },
-          400,
-        );
-      }
+            400,
+          );
+        }
 
-      resolvedItems.push({
-        productId: product.id,
-        variantId: variant.id,
-        productName: product.name,
-        variantName: variant.name,
-        quantity: item.quantity,
-        unitPriceUsd: variant.priceUsd ?? product.priceUsd ?? "0",
-        unitPriceBs: variant.priceBs ?? product.priceBs,
-        currentStock: variant.stock,
-        isVariant: true,
-      });
-    } else {
-      if (product.stock < item.quantity) {
-        return c.json(
-          {
-            error: {
-              message: `Insufficient stock for ${product.name}: ${product.stock} available, ${item.quantity} requested`,
-              status: 400,
+        resolvedItems.push({
+          productId: product.id,
+          variantId: variant.id,
+          productName: product.name,
+          variantName: variant.name,
+          quantity: item.quantity,
+          unitPriceUsd: variant.priceUsd ?? product.priceUsd ?? "0",
+          unitPriceBs: variant.priceBs ?? product.priceBs,
+          currentStock: variant.stock,
+          isVariant: true,
+        });
+      } else {
+        if (product.stock < item.quantity) {
+          return c.json(
+            {
+              error: {
+                message: `Insufficient stock for ${product.name}: ${product.stock} available, ${item.quantity} requested`,
+                status: 400,
+              },
             },
-          },
-          400,
-        );
-      }
+            400,
+          );
+        }
 
-      resolvedItems.push({
-        productId: product.id,
-        variantId: null,
-        productName: product.name,
-        variantName: null,
-        quantity: item.quantity,
-        unitPriceUsd: product.priceUsd ?? "0",
-        unitPriceBs: product.priceBs,
-        currentStock: product.stock,
-        isVariant: false,
-      });
+        resolvedItems.push({
+          productId: product.id,
+          variantId: null,
+          productName: product.name,
+          variantName: null,
+          quantity: item.quantity,
+          unitPriceUsd: product.priceUsd ?? "0",
+          unitPriceBs: product.priceBs,
+          currentStock: product.stock,
+          isVariant: false,
+        });
+      }
     }
-  }
 
-  // Calculate totals.
-  const totalUsd = resolvedItems
-    .reduce((sum, item) => sum + Number(item.unitPriceUsd) * item.quantity, 0)
-    .toFixed(2);
+    // Calculate totals.
+    const totalUsd = resolvedItems
+      .reduce((sum, item) => sum + Number(item.unitPriceUsd) * item.quantity, 0)
+      .toFixed(2);
 
-  const hasBsPrice = resolvedItems.every((item) => item.unitPriceBs !== null);
-  const totalBs = hasBsPrice
-    ? resolvedItems
-        .reduce((sum, item) => sum + Number(item.unitPriceBs) * item.quantity, 0)
-        .toFixed(2)
-    : null;
+    const hasBsPrice = resolvedItems.every((item) => item.unitPriceBs !== null);
+    const totalBs = hasBsPrice
+      ? resolvedItems
+          .reduce((sum, item) => sum + Number(item.unitPriceBs) * item.quantity, 0)
+          .toFixed(2)
+      : null;
 
-  // Generate order number: QYNE-{timestamp}-{random}
-  const orderNumber = `Q-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    // Generate order number: QYNE-{timestamp}-{random}
+    const orderNumber = `Q-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-  // Stock reservation expires in 24 hours.
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Stock reservation expires in 24 hours.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  // Create order in a transaction.
-  const result = await db.transaction(async (tx) => {
-    // 1. Create the order.
-    const [order] = await tx
-      .insert(orders)
-      .values({
+    // Create order in a transaction.
+    const result = await db.transaction(async (tx) => {
+      // 1. Create the order.
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          tenantId,
+          orderNumber,
+          buyerName: body.buyerName,
+          buyerPhone: body.buyerPhone ?? null,
+          totalUsd,
+          totalBs,
+          status: "payment_pending",
+          paymentMethod: body.paymentMethod,
+          paymentStatus: "pending",
+          deliveryMethod: body.deliveryMethod,
+          deliveryAddress: body.deliveryAddress ?? null,
+          expiresAt,
+          notes: body.notes ?? null,
+        })
+        .returning();
+
+      // 2. Create order items.
+      await tx.insert(orderItems).values(
+        resolvedItems.map((item) => ({
+          tenantId,
+          orderId: order.id,
+          productId: item.productId,
+          variantId: item.variantId,
+          productName: item.productName,
+          variantName: item.variantName,
+          quantity: item.quantity,
+          unitPriceUsd: item.unitPriceUsd,
+          unitPriceBs: item.unitPriceBs,
+        })),
+      );
+
+      // 3. Reserve stock (decrement).
+      for (const item of resolvedItems) {
+        if (item.isVariant && item.variantId) {
+          await tx
+            .update(productVariants)
+            .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
+            .where(eq(productVariants.id, item.variantId));
+        } else {
+          await tx
+            .update(products)
+            .set({ stock: sql`${products.stock} - ${item.quantity}` })
+            .where(eq(products.id, item.productId));
+        }
+
+        // Record inventory movement.
+        await tx.insert(inventoryMovements).values({
+          tenantId,
+          productId: item.productId,
+          quantity: -item.quantity,
+          reason: "sale_reserved",
+          referenceId: order.id,
+        });
+      }
+
+      // 4. Find or create customer and update their CRM stats.
+      const { syncCustomerFromOrder } = await import("../services/customer-sync.js");
+      await syncCustomerFromOrder(tx, {
         tenantId,
-        orderNumber,
         buyerName: body.buyerName,
         buyerPhone: body.buyerPhone ?? null,
-        totalUsd,
-        totalBs,
-        status: "payment_pending",
-        paymentMethod: body.paymentMethod,
-        paymentStatus: "pending",
-        deliveryMethod: body.deliveryMethod,
-        deliveryAddress: body.deliveryAddress ?? null,
-        expiresAt,
-        notes: body.notes ?? null,
-      })
-      .returning();
-
-    // 2. Create order items.
-    await tx.insert(orderItems).values(
-      resolvedItems.map((item) => ({
-        tenantId,
         orderId: order.id,
-        productId: item.productId,
-        variantId: item.variantId,
-        productName: item.productName,
-        variantName: item.variantName,
-        quantity: item.quantity,
-        unitPriceUsd: item.unitPriceUsd,
-        unitPriceBs: item.unitPriceBs,
-      })),
-    );
-
-    // 3. Reserve stock (decrement).
-    for (const item of resolvedItems) {
-      if (item.isVariant && item.variantId) {
-        await tx
-          .update(productVariants)
-          .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
-          .where(eq(productVariants.id, item.variantId));
-      } else {
-        await tx
-          .update(products)
-          .set({ stock: sql`${products.stock} - ${item.quantity}` })
-          .where(eq(products.id, item.productId));
-      }
-
-      // Record inventory movement.
-      await tx.insert(inventoryMovements).values({
-        tenantId,
-        productId: item.productId,
-        quantity: -item.quantity,
-        reason: "sale_reserved",
-        referenceId: order.id,
-      });
-    }
-
-    // 4. Find or create customer by phone.
-    if (body.buyerPhone) {
-      const [existing] = await tx
-        .select({ id: customers.id })
-        .from(customers)
-        .where(and(eq(customers.tenantId, tenantId), eq(customers.phone, body.buyerPhone)))
-        .limit(1);
-
-      if (existing) {
-        // Update existing customer stats.
-        await tx
-          .update(customers)
-          .set({
-            totalOrders: sql`${customers.totalOrders} + 1`,
-            lastPurchaseAt: new Date(),
-          })
-          .where(eq(customers.id, existing.id));
-
-        await tx.update(orders).set({ customerId: existing.id }).where(eq(orders.id, order.id));
-      } else {
-        // Create new customer.
-        const [newCustomer] = await tx
-          .insert(customers)
-          .values({
-            tenantId,
-            name: body.buyerName,
-            phone: body.buyerPhone,
-            totalOrders: 1,
-            lastPurchaseAt: new Date(),
-          })
-          .returning();
-
-        await tx.update(orders).set({ customerId: newCustomer.id }).where(eq(orders.id, order.id));
-      }
-    }
-
-    return order;
-  });
-
-  return c.json(
-    {
-      data: {
-        id: result.id,
-        orderNumber: result.orderNumber,
         totalUsd,
-        totalBs,
-        status: result.status,
-        paymentMethod: result.paymentMethod,
-        expiresAt: result.expiresAt,
+      });
+
+      return order;
+    });
+
+    return c.json(
+      {
+        data: {
+          id: result.id,
+          orderNumber: result.orderNumber,
+          totalUsd,
+          totalBs,
+          status: result.status,
+          paymentMethod: result.paymentMethod,
+          expiresAt: result.expiresAt,
+        },
       },
-    },
-    201,
-  );
+      201,
+    );
+  } finally {
+    await clearTenantContext(db).catch(() => {});
+  }
 });
 
 // --- Merchant order management routes (auth required) ---
