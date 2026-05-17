@@ -1,4 +1,4 @@
-// Drizzle schema — all MVP tables.
+// Drizzle schema — all tables.
 // Re-exports every table and relation for use in queries and migrations.
 
 export * from "./tenants.js";
@@ -6,4 +6,5 @@ export * from "./products.js";
 export * from "./customers.js";
 export * from "./orders.js";
 export * from "./inventory.js";
+export * from "./notifications.js";
 export * from "./relations.js";

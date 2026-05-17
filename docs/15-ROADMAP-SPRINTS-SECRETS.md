@@ -413,7 +413,7 @@ PHASE 1  ██ Sprint 6:  AI images (fal.ai) + Inventory adjustments  ← DONE 
 PHASE 2  ██ Sprint 10: Basic CRM + Behavioral tracking
          ██ Sprint 11: RFM scoring + Auto-segments
          ██ Sprint 12: Agno agents (Finance Agent, OCR, briefing)
-         ██ Sprint 13: Smart feed + Notifications
+         ██ Sprint 13: Smart feed + Notifications + Revenue attribution
          ██ Sprint 14: Google Sheets import + Financial dashboard
          ██ Sprint 15: Email reports + Plan tiers + Billing
                        → PAID LAUNCH (50-100 merchants, 3 plans)

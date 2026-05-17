@@ -8,6 +8,7 @@ import { orders, orderItems, payments } from "../db/schema/orders.js";
 import { products, productVariants } from "../db/schema/products.js";
 import { inventoryMovements } from "../db/schema/inventory.js";
 import { tenantMiddleware, authMiddleware } from "../middleware/auth.js";
+import { notifyNewOrder, notifyPaymentVerified } from "../services/notification-service.js";
 
 // --- Schemas ---
 
@@ -292,6 +293,9 @@ publicOrderRoutes.post("/:tenantSlug", zValidator("json", createOrderSchema), as
       return order;
     });
 
+    // Notify merchant of new order (fire-and-forget).
+    void notifyNewOrder(tenantId, result.orderNumber, body.buyerName, totalUsd, result.id);
+
     return c.json(
       {
         data: {
@@ -439,6 +443,11 @@ merchantOrderRoutes.patch("/:id/status", zValidator("json", updateOrderStatusSch
 
     return updated;
   });
+
+  // Notify merchant when payment is verified (fire-and-forget).
+  if (body.status === "verified") {
+    void notifyPaymentVerified(tenantId, order.orderNumber, orderId, order.totalUsd);
+  }
 
   return c.json({ data: result });
 });

@@ -19,6 +19,7 @@ import { getDb } from "../db/index.js";
 import { orders, orderItems } from "../db/schema/orders.js";
 import { products, productVariants } from "../db/schema/products.js";
 import { inventoryMovements } from "../db/schema/inventory.js";
+import { notifyOrderExpired } from "./notification-service.js";
 
 const QUEUE_NAME = "stock-cleanup";
 
@@ -43,7 +44,7 @@ export async function releaseExpiredReservations(): Promise<number> {
   // Only orders in "payment_pending" or "created" status should be cleaned up.
   // Orders that already have a screenshot uploaded are being reviewed — don't expire those.
   const expiredOrders = await db
-    .select({ id: orders.id, tenantId: orders.tenantId })
+    .select({ id: orders.id, tenantId: orders.tenantId, orderNumber: orders.orderNumber })
     .from(orders)
     .where(
       and(
@@ -100,6 +101,9 @@ export async function releaseExpiredReservations(): Promise<number> {
           })
           .where(eq(orders.id, order.id));
       });
+
+      // Notify merchant about expired order (fire-and-forget).
+      void notifyOrderExpired(order.tenantId, order.orderNumber, order.id);
 
       cleaned++;
     } catch (err: unknown) {
