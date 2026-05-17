@@ -9,6 +9,11 @@ const { slug: tenantSlug } = useTenant();
 const { items, updateQuantity, removeItem, totalUsd, totalBs, itemCount } = useCart(
   tenantSlug.value,
 );
+const { trackPageView, trackRemoveFromCart } = useBeacon();
+
+onMounted(() => {
+  trackPageView("cart");
+});
 
 useHead({ title: "Tu carrito — Qyne" });
 </script>
@@ -58,7 +63,13 @@ useHead({ title: "Tu carrito — Qyne" });
             <p class="cart-item-subtotal">
               ${{ (Number(item.priceUsd) * item.quantity).toFixed(2) }}
             </p>
-            <button class="remove-btn" @click="removeItem(item.productId, item.variantId)">
+            <button
+              class="remove-btn"
+              @click="
+                trackRemoveFromCart(item.productId);
+                removeItem(item.productId, item.variantId);
+              "
+            >
               Eliminar
             </button>
           </div>

@@ -10,6 +10,7 @@ const route = useRoute();
 const { slug: tenantSlug, store, fetchStore } = useTenant();
 const { get } = useApi();
 const cart = useCart(tenantSlug.value);
+const { trackProductView, trackAddToCart } = useBeacon();
 
 await fetchStore();
 
@@ -42,6 +43,13 @@ const { data: product, error: fetchError } = await useAsyncData(
 );
 
 const selectedVariant = ref<string | null>(null);
+
+// Track product view when the page loads on the client.
+onMounted(() => {
+  if (product.value) {
+    trackProductView(product.value.id, product.value.name);
+  }
+});
 
 const effectivePrice = computed(() => {
   if (!product.value) return "0";
@@ -92,6 +100,8 @@ function addToCart() {
     imageUrl: p.images[0]?.url ?? null,
     stock: effectiveStock.value,
   });
+
+  trackAddToCart(p.id, p.name, variant?.id);
 
   added.value = true;
   setTimeout(() => (added.value = false), 2000);
