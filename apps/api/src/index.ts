@@ -7,6 +7,11 @@ import {
   stopExchangeRateWorker,
 } from "./services/exchange-rate-worker.js";
 import { startEventWorker, stopEventWorker } from "./services/event-worker.js";
+import { startRfmScoringWorker, stopRfmScoringWorker } from "./services/rfm-scoring.js";
+import {
+  startCartAbandonmentWorker,
+  stopCartAbandonmentWorker,
+} from "./services/cart-abandonment.js";
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -15,6 +20,8 @@ startImageWorker();
 startStockCleanupWorker();
 startExchangeRateWorker();
 startEventWorker();
+startRfmScoringWorker();
+startCartAbandonmentWorker();
 
 // Graceful shutdown.
 const shutdown = async () => {
@@ -24,6 +31,8 @@ const shutdown = async () => {
     stopStockCleanupWorker(),
     stopExchangeRateWorker(),
     stopEventWorker(),
+    stopRfmScoringWorker(),
+    stopCartAbandonmentWorker(),
   ]);
   process.exit(0);
 };
