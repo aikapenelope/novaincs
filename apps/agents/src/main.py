@@ -73,6 +73,7 @@ agent_os = AgentOS(
     workflows=[],
     knowledge=_knowledge or None,
     base_app=base_app,
+    on_route_conflict="preserve_base_app",
     db=db,
     tracing=True,
     scheduler=True,

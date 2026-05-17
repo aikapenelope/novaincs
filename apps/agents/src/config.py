@@ -109,12 +109,17 @@ KNOWLEDGE_DIR.mkdir(exist_ok=True)
 try:
     from agno.knowledge.embedder.openai import OpenAIEmbedder
 
-    embedder = OpenAIEmbedder(
-        id="text-embedding-3-small",
-        dimensions=512,
-        api_key=_openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-    )
+    # Use OpenAI directly for embeddings (OpenRouter doesn't support embeddings).
+    # Falls back gracefully if no OPENAI_API_KEY is set.
+    _openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+    if _openai_api_key:
+        embedder = OpenAIEmbedder(
+            id="text-embedding-3-small",
+            dimensions=512,
+            api_key=_openai_api_key,
+        )
+    else:
+        embedder = None  # type: ignore[assignment]
 except Exception:
     embedder = None  # type: ignore[assignment]
 
