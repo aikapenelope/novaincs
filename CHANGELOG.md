@@ -4,6 +4,35 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Sprint 13 — May 2026
+
+**Smart Feed + Notifications.** The dashboard now shows AI-generated action cards and real-time notifications so merchants never miss what matters.
+
+### Smart Feed
+
+- **Feed items table** — `feed_items` with RLS, deduplication keys, priority ordering, and auto-expiry.
+- **Feed generator worker** — BullMQ cron every 30 minutes. Generates action cards from CRM/RFM data: at-risk customers, pending payments, low stock alerts, new customers.
+- **Feed API** — `GET /feed` (list with priority sort), `PATCH /feed/:id/read`, `PATCH /feed/:id/dismiss`, `POST /feed/read-all`.
+- **Dashboard Smart Feed** — Action cards on the home page with priority indicators, dismiss buttons, and direct action links. Unread badge count.
+
+### In-App Notifications
+
+- **Notifications table** — `notifications` with RLS, tenant isolation, read/unread state.
+- **Notification service** — `createNotification()` with convenience functions for common events: new order, payment uploaded, payment verified, low stock, new customer, order expired.
+- **Notification triggers** — Automatic notifications on: new checkout order, payment verification, stock reservation expiry.
+- **Notification API** — `GET /notifications` (list), `GET /notifications/unread-count` (lightweight polling), `PATCH /notifications/:id/read`, `POST /notifications/read-all`.
+- **Notification Center** — Bell icon with unread badge in dashboard header. Dropdown panel with notification list, mark-all-read, and click-to-navigate. Polls every 30 seconds.
+
+### Revenue Attribution
+
+- **Revenue endpoint** — `GET /customers/:id/revenue` returns verified revenue, order count, and monthly breakdown for the last 12 months.
+
+### Database
+
+- **Migration 0004** — Creates `feed_items` and `notifications` tables with indexes, RLS policies, and role grants.
+
+---
+
 ## Sprint 12 — May 17, 2026
 
 **AI agents in production.** Finance Agent verifies payments, generates daily briefings, and tracks accounts receivable.

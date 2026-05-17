@@ -397,3 +397,78 @@ customerRoutes.post("/rfm/recalculate", async (c) => {
     },
   });
 });
+
+/**
+ * GET /customers/:id/revenue — Revenue attribution for a single customer.
+ *
+ * Returns total revenue, order count, and monthly breakdown for the last 12 months.
+ * Only counts orders with verified payments.
+ */
+customerRoutes.get("/:id/revenue", async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const customerId = c.req.param("id");
+  const db = getDb();
+
+  // Verify customer belongs to tenant.
+  const [customer] = await db
+    .select({ id: customers.id, name: customers.name, lifetimeValue: customers.lifetimeValue })
+    .from(customers)
+    .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
+    .limit(1);
+
+  if (!customer) {
+    return c.json({ error: { message: "Customer not found", status: 404 } }, 404);
+  }
+
+  // Monthly revenue breakdown for the last 12 months.
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const monthlyRevenue = await db
+    .select({
+      month: sql<string>`TO_CHAR(${orders.createdAt}, 'YYYY-MM')`,
+      revenue: sql<string>`COALESCE(SUM(${orders.totalUsd}::numeric), 0)::text`,
+      orderCount: count(),
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.customerId, customerId),
+        eq(orders.tenantId, tenantId),
+        eq(orders.paymentStatus, "verified"),
+        sql`${orders.createdAt} >= ${twelveMonthsAgo}`,
+      ),
+    )
+    .groupBy(sql`TO_CHAR(${orders.createdAt}, 'YYYY-MM')`)
+    .orderBy(sql`TO_CHAR(${orders.createdAt}, 'YYYY-MM') DESC`);
+
+  // Total verified revenue and order count.
+  const [totals] = await db
+    .select({
+      totalRevenue: sql<string>`COALESCE(SUM(${orders.totalUsd}::numeric), 0)::text`,
+      totalOrders: count(),
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.customerId, customerId),
+        eq(orders.tenantId, tenantId),
+        eq(orders.paymentStatus, "verified"),
+      ),
+    );
+
+  return c.json({
+    data: {
+      customerId: customer.id,
+      customerName: customer.name,
+      lifetimeValue: customer.lifetimeValue,
+      verifiedRevenue: totals?.totalRevenue ?? "0",
+      verifiedOrders: totals?.totalOrders ?? 0,
+      monthlyBreakdown: monthlyRevenue.map((row) => ({
+        month: row.month,
+        revenue: row.revenue,
+        orders: row.orderCount,
+      })),
+    },
+  });
+});

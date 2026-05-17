@@ -4,6 +4,7 @@ import { categories, products, productVariants } from "./products.js";
 import { customers, customerEvents } from "./customers.js";
 import { orders, orderItems, payments } from "./orders.js";
 import { inventoryMovements } from "./inventory.js";
+import { feedItems, notifications } from "./notifications.js";
 
 // --- Tenant relations ---
 
@@ -17,6 +18,8 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   paymentConfigs: many(paymentConfigs),
   inventoryMovements: many(inventoryMovements),
   customerEvents: many(customerEvents),
+  feedItems: many(feedItems),
+  notifications: many(notifications),
 }));
 
 export const tenantMembersRelations = relations(tenantMembers, ({ one }) => ({
@@ -89,4 +92,14 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 export const inventoryMovementsRelations = relations(inventoryMovements, ({ one }) => ({
   tenant: one(tenants, { fields: [inventoryMovements.tenantId], references: [tenants.id] }),
   product: one(products, { fields: [inventoryMovements.productId], references: [products.id] }),
+}));
+
+// --- Feed & Notification relations ---
+
+export const feedItemsRelations = relations(feedItems, ({ one }) => ({
+  tenant: one(tenants, { fields: [feedItems.tenantId], references: [tenants.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  tenant: one(tenants, { fields: [notifications.tenantId], references: [tenants.id] }),
 }));
