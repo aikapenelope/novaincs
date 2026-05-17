@@ -34,12 +34,22 @@ jobs:
         run: pnpm --filter @qyne/api exec tsc --noEmit
 
       - name: Typecheck Dashboard
-        run: pnpm --filter @qyne/dashboard exec nuxt typecheck
-        continue-on-error: true  # vue-router volar plugin warning is cosmetic
+        run: |
+          pnpm --filter @qyne/dashboard exec nuxt typecheck 2>&1 | tee /tmp/dash-tc.log
+          # Fail only on real type errors, not the vue-router volar plugin warning.
+          if grep -q "error TS" /tmp/dash-tc.log && ! grep -q "vue-router/volar" /tmp/dash-tc.log; then
+            echo "::error::Dashboard has real type errors"
+            exit 1
+          fi
 
       - name: Typecheck Catalog
-        run: pnpm --filter @qyne/catalog exec nuxt typecheck
-        continue-on-error: true
+        run: |
+          pnpm --filter @qyne/catalog exec nuxt typecheck 2>&1 | tee /tmp/cat-tc.log
+          # Fail only on real type errors, not the vue-router volar plugin warning.
+          if grep -q "error TS" /tmp/cat-tc.log && ! grep -q "vue-router/volar" /tmp/cat-tc.log; then
+            echo "::error::Catalog has real type errors"
+            exit 1
+          fi
 
       - name: Format check
         run: pnpm exec prettier --check "apps/**/*.{ts,vue}" "packages/**/*.ts"
