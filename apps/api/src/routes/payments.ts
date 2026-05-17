@@ -6,6 +6,7 @@ import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { payments, orders } from "../db/schema/orders.js";
 import { authMiddleware, tenantMiddleware } from "../middleware/auth.js";
+import { enqueuePaymentOcr } from "../services/payment-ocr.js";
 
 export const paymentRoutes = new Hono<AppEnv>();
 
@@ -101,6 +102,16 @@ paymentRoutes.post("/", zValidator("json", uploadScreenshotSchema), async (c) =>
     return payment;
   });
 
+  // Trigger async OCR on the screenshot via the Finance Agent.
+  enqueuePaymentOcr({
+    paymentId: result.id,
+    orderId: body.orderId,
+    tenantId,
+    screenshotUrl: body.screenshotUrl,
+    expectedAmount: body.amount,
+    expectedCurrency: body.currency,
+  });
+
   return c.json({ data: result }, 201);
 });
 
@@ -159,6 +170,48 @@ paymentRoutes.get("/:id", async (c) => {
     .limit(1);
 
   return c.json({ data: { ...payment, order } });
+});
+
+/**
+ * GET /payments/:id/ocr — Get the OCR result for a payment screenshot.
+ *
+ * Returns the Finance Agent's extraction: amount, reference, bank, date,
+ * confidence level, and whether it matches the expected order total.
+ * Used by the dashboard to show the merchant what the AI extracted
+ * before they verify/reject.
+ */
+paymentRoutes.get("/:id/ocr", async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const paymentId = c.req.param("id");
+  const db = getDb();
+
+  const [payment] = await db
+    .select({
+      id: payments.id,
+      status: payments.status,
+      ocrData: payments.ocrData,
+      screenshotUrl: payments.screenshotUrl,
+      amount: payments.amount,
+      currency: payments.currency,
+    })
+    .from(payments)
+    .where(and(eq(payments.id, paymentId), eq(payments.tenantId, tenantId)))
+    .limit(1);
+
+  if (!payment) {
+    return c.json({ error: { message: "Payment not found", status: 404 } }, 404);
+  }
+
+  return c.json({
+    data: {
+      paymentId: payment.id,
+      status: payment.status,
+      screenshotUrl: payment.screenshotUrl,
+      expectedAmount: payment.amount,
+      expectedCurrency: payment.currency,
+      ocr: payment.ocrData ?? null,
+    },
+  });
 });
 
 /**
