@@ -9,6 +9,7 @@ Usage:
 """
 
 from typing import Any
+from pathlib import Path
 
 from fastapi import FastAPI
 from agno.os import AgentOS
@@ -72,6 +73,7 @@ agent_os = AgentOS(
     teams=[],
     workflows=[],
     knowledge=_knowledge or None,
+    config=str(Path(__file__).parent / "config.yaml"),
     base_app=base_app,
     on_route_conflict="preserve_base_app",
     db=db,

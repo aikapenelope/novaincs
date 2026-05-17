@@ -1,0 +1,10 @@
+# Nova Agents — AgentOS Configuration
+# This file configures the AgentOS control plane UI.
+
+chat:
+  quick_prompts:
+    nova-finance-agent:
+      - "Verifica este screenshot de pago"
+      - "Dame el resumen financiero de hoy"
+      - "Cuales ordenes tienen pago pendiente?"
+      - "Que productos tienen margen negativo?"
