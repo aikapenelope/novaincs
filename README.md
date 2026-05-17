@@ -132,11 +132,17 @@ DONE  Sprint 1   Infrastructure (Hetzner, DBs, Redis, Prefect, backups)
 DONE  Sprint 2   Monorepo scaffolding (pnpm + turborepo, 3 apps, 2 packages)
 DONE  Sprint 3   Database schema (13 tables), RLS, Clerk auth, tenant CRUD
 DONE  Sprint 4   Product/Category CRUD API, image upload, Catalog + Dashboard PWA
-NEXT  Sprint 5   CI/CD pipeline, Dockerfiles, first production deploy
-      Month 2-3  MVP (checkout, payments, inventory, onboarding)
-      Month 4-6  Intelligence (CRM, RFM, agents, reports, imports)
-      Month 7-9  Automation (WhatsApp API, broadcasts, expenses, tiers)
-      Month 10-12 Platform (Wakit, public API, MCP, analytics, voice)
+DONE  Sprint 5   CI/CD pipeline, Dockerfiles, first production deploy
+DONE  Sprint 6   AI images (fal.ai) + BCV dual pricing
+DONE  Sprint 7   Cart + Checkout + WhatsApp deep link (catalog PWA)
+DONE  Sprint 8   Orders dashboard + Payment verification + Daily stats
+DONE  Sprint 9   Onboarding wizard + Excel import + Full-text search + SEO
+DONE  Sprint 10  Production hardening + CRM foundation (customers, beacon, RLS fix)
+DONE  Sprint 11  RFM scoring + Auto-segments + Cart abandonment + Identity merge
+DONE  Sprint 12  Agno agents (Finance Agent, OCR, daily briefing, accounts receivable)
+NEXT  Sprint 13  Smart feed + Notifications
+      Sprint 14  Google Sheets import + Financial dashboard
+      Sprint 15  Email reports + Plan tiers + Billing → PAID LAUNCH
 ```
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed sprint-by-sprint changes.

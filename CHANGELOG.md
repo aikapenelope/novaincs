@@ -4,6 +4,90 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Sprint 12 — May 17, 2026
+
+**AI agents in production.** Finance Agent verifies payments, generates daily briefings, and tracks accounts receivable.
+
+### Agno AgentOS (PRs #41-#48)
+
+- **nova-agents container** — Agno AgentOS running on Coolify (port 8100, internal). Python 3.12, FastAPI, PostgreSQL storage (pg-agno), OpenRouter for LLM access.
+- **Finance Agent** — "The Accountant" with OCR tool, knowledge base, guardrails (PII detection, prompt injection), learning machine, context compression.
+- **Three model tiers** via OpenRouter: fast (gpt-4o-mini), tool (gpt-4o-mini), reasoning (gpt-5-mini) + Groq for ultra-fast tasks.
+- **Knowledge base** — LanceDB local vectors with auto-indexing from `knowledge/` folder.
+- **config.yaml** — AgentOS control plane UI configuration.
+
+### Finance Agent OCR (PR #49)
+
+- **Payment OCR service** — BullMQ worker calls Finance Agent to extract transaction details from Pago Movil/Zelle screenshots.
+- **Auto-verification** — when confidence is high and extracted amount matches order total, payment is auto-verified without merchant intervention.
+- **OCR endpoint** — `GET /payments/:id/ocr` returns extraction results for the dashboard.
+
+### Daily Briefing (PR #50)
+
+- **Morning summary** — BullMQ cron at 8 AM UTC gathers yesterday's sales, pending payments, top products, at-risk customers, negative-margin products.
+- **AI summary** — Finance Agent generates natural-language briefing in Spanish. Falls back to data-only when agent is unavailable.
+- **Endpoints** — `GET /briefing` (with AI), `GET /briefing/data` (raw data only).
+
+### Accounts Receivable (PR #51)
+
+- **Aging buckets** — `GET /receivables` groups unpaid orders: 0-7d (current), 7-15d (follow up), 15-30d (overdue), 30d+ (critical).
+- **Expiring orders** — `GET /receivables/expiring` shows orders with stock reservation expiring within 6 hours.
+
+### Documentation
+
+- **Doc 19: Agno Deployment Log** — complete record of all 10 deployment problems and solutions.
+
+---
+
+## Sprint 11 — May 17, 2026
+
+**CRM intelligence layer.** The system now knows who the merchant's customers are, how valuable they are, and which ones need attention.
+
+### RFM Scoring (PR #39)
+
+- **RFM scoring engine** — BullMQ cron every 6 hours. Calculates Recency/Frequency/Monetary scores (1-5) per customer with per-tenant quintile calibration.
+- **Auto-segments** — VIP, Loyal, Potential Loyal, At Risk, Hibernating, New, One-Timer, Window Shopper.
+- **API endpoints** — `GET /customers/segments` (breakdown), `GET /customers/at-risk` (re-engagement list), `POST /customers/rfm/recalculate` (manual trigger).
+
+### Identity Merge (PR #39)
+
+- **Visitor-to-customer linking** — when anonymous visitor checks out, `visitorId` from catalog PWA is sent with the order. All prior anonymous events are retroactively linked to the customer.
+- **visitor_ids array** — customer record tracks all merged visitor sessions.
+
+### Cart Abandonment (PR #39)
+
+- **Detection worker** — BullMQ cron every 30 minutes. Finds `add_to_cart` events from 2-24 hours ago without a corresponding `checkout_complete`. Creates `cart_abandoned` event (once per visitor per day).
+- **2-hour window** — accounts for Pago Movil transfers where buyer switches to banking app.
+
+---
+
+## Sprint 10 — May 17, 2026
+
+**Production hardening + CRM foundation.** Fixed 4 critical production issues and built the base for the CRM module.
+
+### Production Hardening (PR #37)
+
+- **RLS context fix** — changed `set_config('app.current_tenant', ..., true)` to `false` (session-level) + `finally` cleanup. Prevents tenant data leaking across pooled connections.
+- **Redis rate limiter** — replaced in-memory `Map` with Redis-backed `INCR` + `EXPIRE`. Survives restarts, works across instances.
+- **Security headers** — `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`.
+- **CI typecheck fix** — removed `continue-on-error: true`, now filters only the known vue-router/volar warning.
+
+### CRM Foundation (PRs #37, #38)
+
+- **Customer CRUD** — `GET/PATCH /customers` with search (name/phone), segment filter, pagination. Detail card with recent orders + event timeline.
+- **Notes + Tags** — `PATCH /customers/:id/notes` (append with timestamp), `PUT /customers/:id/tags`.
+- **Customer stats** — `GET /customers/stats` (total, segment breakdown, top by LTV).
+- **Auto-customer sync** — `syncCustomerFromOrder` service calculates lifetime value and average order value on every order.
+- **Behavioral beacon** — `POST /beacon` (single) and `POST /beacon/batch` (batch) for catalog PWA tracking. BullMQ worker inserts events into PostgreSQL.
+- **useBeacon composable** — catalog PWA tracks page_view, product_view, add_to_cart, remove_from_cart, checkout_start with persistent visitor ID.
+
+### Infrastructure
+
+- **Redis eviction policy** — changed from `allkeys-lru` to `noeviction` for BullMQ job safety (PR #40).
+- **Doc 18: Sprint 10 Hardening Status** — documents what was fixed and what's deferred.
+
+---
+
 ## Sprint 9 — May 16, 2026
 
 **Beta launch readiness.** End-to-end flow works without technical intervention.
