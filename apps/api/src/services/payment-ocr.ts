@@ -95,10 +95,13 @@ async function callFinanceAgentOcr(screenshotUrl: string): Promise<OcrResult> {
       : ((result?.content as string) ?? (data?.content as string) ?? messages?.[0]?.content ?? "");
 
   // Try to parse JSON from the agent's response.
+  // Use indexOf instead of regex to avoid ReDoS vulnerability.
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    const firstBrace = content.indexOf("{");
+    const lastBrace = content.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const jsonStr = content.slice(firstBrace, lastBrace + 1);
+      const parsed = JSON.parse(jsonStr);
       return {
         amount: parsed.amount ?? null,
         currency: parsed.currency ?? null,
