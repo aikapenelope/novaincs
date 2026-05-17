@@ -130,7 +130,7 @@ services:
       --appendonly yes
       --requirepass ${REDIS_PASSWORD}
       --maxmemory 384mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
       --databases 4
     volumes:
       - redis_data:/data

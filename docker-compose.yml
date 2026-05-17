@@ -89,7 +89,7 @@ services:
       --appendonly yes
       --requirepass qyne_dev
       --maxmemory 128mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
       --databases 4
     volumes:
       - redis_data:/data
