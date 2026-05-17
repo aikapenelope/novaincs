@@ -25,6 +25,8 @@ const createOrderSchema = z.object({
   paymentMethod: z.enum(["pago_movil", "zelle", "cash_on_delivery"]),
   items: z.array(cartItemSchema).min(1).max(50),
   notes: z.string().max(1000).nullish(),
+  // Anonymous visitor ID from the catalog PWA (for identity merge).
+  visitorId: z.string().max(255).nullish(),
 });
 
 const updateOrderStatusSchema = z.object({
@@ -269,13 +271,23 @@ publicOrderRoutes.post("/:tenantSlug", zValidator("json", createOrderSchema), as
 
       // 4. Find or create customer and update their CRM stats.
       const { syncCustomerFromOrder } = await import("../services/customer-sync.js");
-      await syncCustomerFromOrder(tx, {
+      const customerId = await syncCustomerFromOrder(tx, {
         tenantId,
         buyerName: body.buyerName,
         buyerPhone: body.buyerPhone ?? null,
         orderId: order.id,
         totalUsd,
       });
+
+      // 5. Identity merge: link anonymous visitor events to the customer.
+      if (body.visitorId && customerId) {
+        const { mergeVisitorToCustomer } = await import("../services/identity-merge.js");
+        // Run outside the transaction to avoid holding it open for the merge.
+        // The merge is best-effort — if it fails, the order still succeeds.
+        void mergeVisitorToCustomer(db, tenantId, customerId, body.visitorId).catch((err) => {
+          console.error(`[identity-merge] Failed: ${err instanceof Error ? err.message : err}`);
+        });
+      }
 
       return order;
     });

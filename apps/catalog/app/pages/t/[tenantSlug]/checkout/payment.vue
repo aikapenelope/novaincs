@@ -9,6 +9,7 @@
 const { slug: tenantSlug, store, fetchStore } = useTenant();
 const { items, totalUsd, totalBs, clear } = useCart(tenantSlug.value);
 const { get, apiUrl } = useApi();
+const { getVisitorId } = useBeacon();
 const router = useRouter();
 
 await fetchStore();
@@ -104,6 +105,7 @@ async function submitOrder() {
             variantId: item.variantId || undefined,
             quantity: item.quantity,
           })),
+          visitorId: getVisitorId() || undefined,
         },
       },
     );

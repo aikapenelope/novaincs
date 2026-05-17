@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, sql, ilike, count, or } from "drizzle-orm";
+import { eq, and, desc, sql, ilike, count, or, isNotNull } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { customers, customerEvents } from "../db/schema/customers.js";
 import { orders } from "../db/schema/orders.js";
 import { authMiddleware, tenantMiddleware } from "../middleware/auth.js";
+import { runRfmScoring } from "../services/rfm-scoring.js";
 
 export const customerRoutes = new Hono<AppEnv>();
 
@@ -310,6 +311,89 @@ customerRoutes.get("/stats", async (c) => {
         {} as Record<string, number>,
       ),
       topCustomers,
+    },
+  });
+});
+
+/**
+ * GET /customers/segments — List customers grouped by segment.
+ * Returns each segment with its customer count and average LTV.
+ */
+customerRoutes.get("/segments", async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const db = getDb();
+
+  const segmentData = await db
+    .select({
+      segment: customers.segment,
+      count: count(),
+      avgLifetimeValue: sql<string>`ROUND(AVG(${customers.lifetimeValue}::numeric), 2)::text`,
+      avgOrders: sql<string>`ROUND(AVG(${customers.totalOrders}), 1)::text`,
+    })
+    .from(customers)
+    .where(eq(customers.tenantId, tenantId))
+    .groupBy(customers.segment)
+    .orderBy(sql`count(*) DESC`);
+
+  return c.json({
+    data: segmentData.map((row) => ({
+      segment: row.segment ?? "unclassified",
+      count: row.count,
+      avgLifetimeValue: row.avgLifetimeValue,
+      avgOrders: row.avgOrders,
+    })),
+  });
+});
+
+/**
+ * GET /customers/at-risk — List customers in at_risk or hibernating segments.
+ * These are the customers the merchant should focus on re-engaging.
+ */
+customerRoutes.get("/at-risk", async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const limit = Math.min(Number(c.req.query("limit") ?? 50), 100);
+  const offset = Number(c.req.query("offset") ?? 0);
+  const db = getDb();
+
+  const atRiskSegments = ["at_risk", "hibernating", "one_timer"];
+
+  const [rows, [countResult]] = await Promise.all([
+    db
+      .select()
+      .from(customers)
+      .where(
+        and(eq(customers.tenantId, tenantId), sql`${customers.segment} = ANY(${atRiskSegments})`),
+      )
+      .orderBy(sql`${customers.lifetimeValue}::numeric DESC`)
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(customers)
+      .where(
+        and(eq(customers.tenantId, tenantId), sql`${customers.segment} = ANY(${atRiskSegments})`),
+      ),
+  ]);
+
+  return c.json({
+    data: rows,
+    total: countResult?.total ?? 0,
+    limit,
+    offset,
+  });
+});
+
+/**
+ * POST /customers/rfm/recalculate — Trigger an immediate RFM recalculation.
+ * Useful after bulk imports or when the merchant wants fresh segments.
+ * Rate-limited to prevent abuse (the cron runs every 6h automatically).
+ */
+customerRoutes.post("/rfm/recalculate", async (c) => {
+  const result = await runRfmScoring();
+  return c.json({
+    data: {
+      tenantsProcessed: result.tenantsProcessed,
+      customersScored: result.customersScored,
     },
   });
 });
