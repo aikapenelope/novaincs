@@ -13,6 +13,7 @@ import {
   stopCartAbandonmentWorker,
 } from "./services/cart-abandonment.js";
 import { startPaymentOcrWorker, stopPaymentOcrWorker } from "./services/payment-ocr.js";
+import { startDailyBriefingWorker, stopDailyBriefingWorker } from "./services/daily-briefing.js";
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -24,6 +25,7 @@ startEventWorker();
 startRfmScoringWorker();
 startCartAbandonmentWorker();
 startPaymentOcrWorker();
+startDailyBriefingWorker();
 
 // Graceful shutdown.
 const shutdown = async () => {
@@ -36,6 +38,7 @@ const shutdown = async () => {
     stopRfmScoringWorker(),
     stopCartAbandonmentWorker(),
     stopPaymentOcrWorker(),
+    stopDailyBriefingWorker(),
   ]);
   process.exit(0);
 };
