@@ -180,10 +180,7 @@ const fieldTypeLabels: Record<string, string> = {
 
     <!-- Tabs -->
     <div class="tabs">
-      <button
-        :class="['tab', { active: activeTab === 'product' }]"
-        @click="activeTab = 'product'"
-      >
+      <button :class="['tab', { active: activeTab === 'product' }]" @click="activeTab = 'product'">
         Productos
       </button>
       <button
@@ -199,7 +196,10 @@ const fieldTypeLabels: Record<string, string> = {
       <div v-if="isLoading" class="loading">Cargando...</div>
 
       <div v-else-if="fields.length === 0" class="empty-state">
-        <p>No hay campos personalizados para {{ activeTab === "product" ? "productos" : "clientes" }}.</p>
+        <p>
+          No hay campos personalizados para
+          {{ activeTab === "product" ? "productos" : "clientes" }}.
+        </p>
         <button class="btn-create" @click="showCreateForm = true">Crear primer campo</button>
       </div>
 
@@ -213,12 +213,19 @@ const fieldTypeLabels: Record<string, string> = {
                 <span v-if="field.required" class="field-required">Requerido</span>
                 <code class="field-key">{{ field.fieldKey }}</code>
               </span>
-              <span v-if="field.fieldType === 'select' && field.options.length" class="field-options">
+              <span
+                v-if="field.fieldType === 'select' && field.options.length"
+                class="field-options"
+              >
                 Opciones: {{ field.options.join(", ") }}
               </span>
             </div>
             <div class="field-actions">
-              <button class="btn-toggle" :title="field.required ? 'Hacer opcional' : 'Hacer requerido'" @click="toggleRequired(field)">
+              <button
+                class="btn-toggle"
+                :title="field.required ? 'Hacer opcional' : 'Hacer requerido'"
+                @click="toggleRequired(field)"
+              >
                 {{ field.required ? "Opcional" : "Requerido" }}
               </button>
               <button class="btn-delete" @click="deleteField(field)">Eliminar</button>
@@ -226,7 +233,11 @@ const fieldTypeLabels: Record<string, string> = {
           </div>
         </div>
 
-        <button v-if="!showCreateForm && fields.length < 20" class="btn-create" @click="showCreateForm = true">
+        <button
+          v-if="!showCreateForm && fields.length < 20"
+          class="btn-create"
+          @click="showCreateForm = true"
+        >
           Agregar campo
         </button>
         <p v-if="fields.length >= 20" class="limit-msg">Maximo 20 campos por tipo de entidad.</p>
@@ -266,7 +277,11 @@ const fieldTypeLabels: Record<string, string> = {
 
       <div class="form-group">
         <label>Placeholder</label>
-        <input v-model="createForm.placeholder" type="text" placeholder="Texto de ayuda en el input" />
+        <input
+          v-model="createForm.placeholder"
+          type="text"
+          placeholder="Texto de ayuda en el input"
+        />
       </div>
 
       <div class="form-group checkbox-group">
