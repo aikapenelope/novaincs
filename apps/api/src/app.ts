@@ -28,6 +28,8 @@ import { exportRoutes } from "./routes/export.js";
 import { ownerLockRoutes } from "./routes/owner-lock.js";
 import { billingRoutes } from "./routes/billing.js";
 import { agentsRoutes } from "./routes/agents.js";
+import { supplierRoutes } from "./routes/suppliers.js";
+import { expenseRoutes } from "./routes/expenses.js";
 
 // Create the Hono app with typed environment bindings.
 export type AppEnv = {
@@ -92,6 +94,8 @@ app.route("/export", exportRoutes);
 app.route("/owner-lock", ownerLockRoutes);
 app.route("/billing", billingRoutes);
 app.route("/agents", agentsRoutes);
+app.route("/suppliers", supplierRoutes);
+app.route("/expenses", expenseRoutes);
 
 // Serve uploaded files in development (LocalStorageAdapter writes to .uploads/).
 // In production, images are served directly from Cloudflare R2.
