@@ -5,8 +5,10 @@ export const PLAN_DEFAULTS = {
   free: {
     tier: "free" as const,
     features: {
-      crm_rfm_scoring: false,
+      smart_feed: false,
+      reports: false,
       financial_dashboard: false,
+      crm_rfm_scoring: false,
       expense_tracking: false,
       ocr_verification: false,
       whatsapp_api: false,
@@ -15,6 +17,7 @@ export const PLAN_DEFAULTS = {
       ai_autonomous: false,
       public_api: false,
       custom_fields: false,
+      google_sheets_import: false,
     },
     limits: {
       ai_images_per_month: 10,
@@ -25,8 +28,10 @@ export const PLAN_DEFAULTS = {
   starter: {
     tier: "starter" as const,
     features: {
-      crm_rfm_scoring: false,
+      smart_feed: true,
+      reports: false,
       financial_dashboard: false,
+      crm_rfm_scoring: false,
       expense_tracking: false,
       ocr_verification: false,
       whatsapp_api: false,
@@ -35,6 +40,7 @@ export const PLAN_DEFAULTS = {
       ai_autonomous: false,
       public_api: false,
       custom_fields: false,
+      google_sheets_import: false,
     },
     limits: {
       ai_images_per_month: 100,
@@ -45,8 +51,10 @@ export const PLAN_DEFAULTS = {
   pro: {
     tier: "pro" as const,
     features: {
-      crm_rfm_scoring: true,
+      smart_feed: true,
+      reports: true,
       financial_dashboard: true,
+      crm_rfm_scoring: true,
       expense_tracking: true,
       ocr_verification: true,
       whatsapp_api: true,
@@ -55,6 +63,7 @@ export const PLAN_DEFAULTS = {
       ai_autonomous: false,
       public_api: false,
       custom_fields: true,
+      google_sheets_import: true,
     },
     limits: {
       ai_images_per_month: Infinity,
@@ -65,8 +74,10 @@ export const PLAN_DEFAULTS = {
   business: {
     tier: "business" as const,
     features: {
-      crm_rfm_scoring: true,
+      smart_feed: true,
+      reports: true,
       financial_dashboard: true,
+      crm_rfm_scoring: true,
       expense_tracking: true,
       ocr_verification: true,
       whatsapp_api: true,
@@ -75,6 +86,7 @@ export const PLAN_DEFAULTS = {
       ai_autonomous: true,
       public_api: true,
       custom_fields: true,
+      google_sheets_import: true,
     },
     limits: {
       ai_images_per_month: Infinity,
@@ -83,6 +95,20 @@ export const PLAN_DEFAULTS = {
     },
   },
 } as const;
+
+/** Plan tier type. */
+export type PlanTier = keyof typeof PLAN_DEFAULTS;
+
+/** Feature name type. */
+export type PlanFeature = keyof (typeof PLAN_DEFAULTS)["free"]["features"];
+
+/** Plan pricing in USD. */
+export const PLAN_PRICES: Record<PlanTier, number> = {
+  free: 0,
+  starter: 8,
+  pro: 15,
+  business: 25,
+};
 
 /** RFM segment thresholds (defaults, calibrated per-merchant after 30 days). */
 export const RFM_SEGMENTS = {
