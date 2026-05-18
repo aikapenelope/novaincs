@@ -48,9 +48,12 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
-# Copy drizzle migrations (needed for db:migrate)
+# Copy drizzle migrations (applied automatically on startup)
 COPY apps/api/drizzle ./apps/api/drizzle
 COPY apps/api/drizzle.config.ts ./apps/api/
+
+# Copy entrypoint script
+COPY apps/api/entrypoint.sh ./apps/api/entrypoint.sh
 
 # Non-root user for security
 RUN addgroup --system --gid 1001 qyne && \
@@ -63,4 +66,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1
 
-CMD ["node", "apps/api/dist/index.js"]
+ENTRYPOINT ["sh", "apps/api/entrypoint.sh"]
