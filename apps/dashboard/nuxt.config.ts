@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   // Clerk auth module.
-  modules: ["@clerk/nuxt"],
+  modules: ["@clerk/nuxt", "nuxt-charts"],
 
   // Clerk configuration.
   // Keys are read from environment variables:

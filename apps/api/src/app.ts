@@ -22,6 +22,9 @@ import { briefingRoutes } from "./routes/briefing.js";
 import { receivablesRoutes } from "./routes/receivables.js";
 import { feedRoutes } from "./routes/feed.js";
 import { notificationRoutes } from "./routes/notifications.js";
+import { importRoutes } from "./routes/import.js";
+import { analyticsRoutes } from "./routes/analytics.js";
+import { exportRoutes } from "./routes/export.js";
 
 // Create the Hono app with typed environment bindings.
 export type AppEnv = {
@@ -80,6 +83,9 @@ app.route("/briefing", briefingRoutes);
 app.route("/receivables", receivablesRoutes);
 app.route("/feed", feedRoutes);
 app.route("/notifications", notificationRoutes);
+app.route("/import", importRoutes);
+app.route("/analytics", analyticsRoutes);
+app.route("/export", exportRoutes);
 
 // Serve uploaded files in development (LocalStorageAdapter writes to .uploads/).
 // In production, images are served directly from Cloudflare R2.
