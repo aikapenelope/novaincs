@@ -35,8 +35,11 @@ export const tenants = pgTable(
     domain: varchar("domain", { length: 255 }),
     // Plan
     planTier: varchar("plan_tier", { length: 50 }).notNull().default("free"),
-    // Per-tenant overrides: { features: { ai_images: true }, limits: { ai_images_per_month: 200 } }
+    planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
     planOverrides: jsonb("plan_overrides").notNull().default({}),
+    aiImagesUsed: integer("ai_images_used").notNull().default(0),
+    aiImagesResetAt: timestamp("ai_images_reset_at", { withTimezone: true }),
+    ownerPinHash: text("owner_pin_hash"),
     status: varchar("status", { length: 50 }).notNull().default("active"),
     settings: jsonb("settings").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
