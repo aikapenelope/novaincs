@@ -76,19 +76,8 @@ echo "[vps] Building Docker images..."
 cd infra
 docker compose build --no-cache qyne-api qyne-dashboard
 
-echo "[vps] Running database migrations..."
-docker compose run --rm qyne-api node -e "
-  const { drizzle } = require('drizzle-orm/postgres-js');
-  const { migrate } = require('drizzle-orm/postgres-js/migrator');
-  const postgres = require('postgres');
-  const sql = postgres(process.env.DATABASE_URL, { max: 1 });
-  const db = drizzle(sql);
-  migrate(db, { migrationsFolder: '/app/apps/api/drizzle' })
-    .then(() => { console.log('Migrations complete'); sql.end(); })
-    .catch((e) => { console.error('Migration failed:', e); process.exit(1); });
-"
-
 echo "[vps] Restarting application containers..."
+echo "[vps] (Migrations run automatically on API container startup)"
 docker compose up -d qyne-api qyne-dashboard
 
 echo "[vps] Waiting for containers to be healthy..."
