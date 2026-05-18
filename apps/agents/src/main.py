@@ -17,15 +17,24 @@ from agno.os import AgentOS
 
 from .config import db, knowledge_base, AGENTS_PORT
 from .agents.finance import create_finance_agent
+from .agents.sales import create_sales_agent
+from .agents.content import create_content_agent
+from .agents.support import create_support_agent
 
 # ---------------------------------------------------------------------------
 # Agents
 # ---------------------------------------------------------------------------
 
 finance_agent = create_finance_agent(agent_db=db)
+sales_agent = create_sales_agent(agent_db=db)
+content_agent = create_content_agent(agent_db=db)
+support_agent = create_support_agent(agent_db=db)
 
 _all_agents: list[Any] = [
     finance_agent,
+    sales_agent,
+    content_agent,
+    support_agent,
 ]
 
 # ---------------------------------------------------------------------------

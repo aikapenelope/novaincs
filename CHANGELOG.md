@@ -4,7 +4,39 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
-## Sprint 14 — May 2026
+## Sprint 16 — May 2026
+
+**AI Agents: Sales, Content, and Support.** Three new agents join the Finance Agent in production. Merchants can now get sales suggestions, generate product copy, and ask questions about their business data.
+
+### Sales Agent ("The Closer")
+
+- **Opportunity detection** — Analyzes CRM/RFM data to find at-risk customers, upsell potential, and cross-sell patterns.
+- **Actionable suggestions** — Generates specific recommendations: WHO to contact, WHAT to say, WHY (data-backed), and HOW (draft message).
+- **Re-engagement strategies** — Suggests personalized messages for dormant customer segments.
+
+### Content Agent ("The Copywriter")
+
+- **Product descriptions** — Short (catalog) and long (detail page) versions optimized for selling.
+- **Social media copy** — Instagram captions with hashtags, hooks, and CTAs.
+- **Promotional texts** — Sales announcements, new arrivals, limited-time offers.
+- **3 tone options** — Professional, casual, and urgent variants for every output.
+- **Venezuelan Spanish** — Adapted vocabulary and tone for the local market.
+
+### Support Agent ("The Assistant")
+
+- **Business Q&A** — Answers questions about sales, inventory, customers, orders, and finances.
+- **Proactive insights** — Mentions noteworthy patterns when answering (stock alerts, trends).
+- **Conversational interface** — Natural language queries instead of navigating dashboards.
+
+### API
+
+- **`POST /agents/chat`** — Unified endpoint to invoke any agent with message + context. Proxies to Agno AgentOS. Requires Pro or Business plan.
+- **`GET /agents/list`** — Lists available agents and their status.
+- **Plan gating** — AI agents require `ai_agents` feature (Pro+ plans only).
+
+---
+
+## Sprint 15 — May 2026
 
 **Financial Dashboard + Google Sheets Import.** Merchants can now see revenue trends, product margins, and export reports. Products can be imported from Google Sheets via service account.
 
