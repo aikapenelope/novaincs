@@ -151,8 +151,12 @@ function changePeriod(newDays: number) {
       <h1>Flujo de Caja</h1>
       <div class="period-selector">
         <button :class="['period-btn', { active: days === 7 }]" @click="changePeriod(7)">7d</button>
-        <button :class="['period-btn', { active: days === 30 }]" @click="changePeriod(30)">30d</button>
-        <button :class="['period-btn', { active: days === 90 }]" @click="changePeriod(90)">90d</button>
+        <button :class="['period-btn', { active: days === 30 }]" @click="changePeriod(30)">
+          30d
+        </button>
+        <button :class="['period-btn', { active: days === 90 }]" @click="changePeriod(90)">
+          90d
+        </button>
       </div>
     </div>
 
@@ -193,8 +197,12 @@ function changePeriod(newDays: number) {
           <div class="projection-card">
             <span class="projection-label">Promedio diario</span>
             <div class="projection-row">
-              <span class="proj-in">+{{ formatCurrency(summary.projections.daily.avgInflow) }}</span>
-              <span class="proj-out">-{{ formatCurrency(summary.projections.daily.avgOutflow) }}</span>
+              <span class="proj-in"
+                >+{{ formatCurrency(summary.projections.daily.avgInflow) }}</span
+              >
+              <span class="proj-out"
+                >-{{ formatCurrency(summary.projections.daily.avgOutflow) }}</span
+              >
               <span class="proj-net" :class="netClass(summary.projections.daily.avgNet)">
                 = {{ formatCurrency(summary.projections.daily.avgNet) }}
               </span>
@@ -203,8 +211,12 @@ function changePeriod(newDays: number) {
           <div class="projection-card">
             <span class="projection-label">Proximos 7 dias</span>
             <div class="projection-row">
-              <span class="proj-in">+{{ formatCurrency(summary.projections.sevenDay.projectedInflows) }}</span>
-              <span class="proj-out">-{{ formatCurrency(summary.projections.sevenDay.projectedOutflows) }}</span>
+              <span class="proj-in"
+                >+{{ formatCurrency(summary.projections.sevenDay.projectedInflows) }}</span
+              >
+              <span class="proj-out"
+                >-{{ formatCurrency(summary.projections.sevenDay.projectedOutflows) }}</span
+              >
               <span class="proj-net" :class="netClass(summary.projections.sevenDay.projectedNet)">
                 = {{ formatCurrency(summary.projections.sevenDay.projectedNet) }}
               </span>
@@ -213,8 +225,12 @@ function changePeriod(newDays: number) {
           <div class="projection-card">
             <span class="projection-label">Proximos 30 dias</span>
             <div class="projection-row">
-              <span class="proj-in">+{{ formatCurrency(summary.projections.thirtyDay.projectedInflows) }}</span>
-              <span class="proj-out">-{{ formatCurrency(summary.projections.thirtyDay.projectedOutflows) }}</span>
+              <span class="proj-in"
+                >+{{ formatCurrency(summary.projections.thirtyDay.projectedInflows) }}</span
+              >
+              <span class="proj-out"
+                >-{{ formatCurrency(summary.projections.thirtyDay.projectedOutflows) }}</span
+              >
               <span class="proj-net" :class="netClass(summary.projections.thirtyDay.projectedNet)">
                 = {{ formatCurrency(summary.projections.thirtyDay.projectedNet) }}
               </span>
@@ -293,67 +309,297 @@ function changePeriod(newDays: number) {
 
     <!-- Empty state -->
     <div v-else-if="!planError" class="empty-state">
-      <p>Aun no hay datos de flujo de caja. Aparecera cuando tengas ventas verificadas y gastos registrados.</p>
+      <p>
+        Aun no hay datos de flujo de caja. Aparecera cuando tengas ventas verificadas y gastos
+        registrados.
+      </p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.cashflow-page h1 { font-size: 1.5rem; font-weight: 600; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.period-selector { display: flex; gap: 0.25rem; background: #f3f4f6; border-radius: 0.375rem; padding: 0.25rem; }
-.period-btn { padding: 0.375rem 0.75rem; border: none; background: transparent; border-radius: 0.25rem; font-size: 0.8125rem; font-weight: 500; color: #6b7280; cursor: pointer; }
-.period-btn.active { background: white; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-.plan-gate { text-align: center; padding: 3rem 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
-.plan-gate p { margin-bottom: 1rem; color: #374151; }
-.btn-upgrade { display: inline-block; padding: 0.5rem 1.25rem; background: #111827; color: white; border-radius: 0.375rem; text-decoration: none; font-weight: 500; font-size: 0.875rem; }
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.kpi-card { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; display: flex; flex-direction: column; }
-.kpi-inflows { border-left: 3px solid #10b981; }
-.kpi-outflows { border-left: 3px solid #ef4444; }
-.kpi-net { border-left: 3px solid #3b82f6; }
-.kpi-label { font-size: 0.8125rem; color: #6b7280; margin-bottom: 0.25rem; }
-.kpi-value { font-size: 1.75rem; font-weight: 700; color: #111827; }
-.kpi-sub { font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; }
-.kpi-change { font-size: 0.75rem; margin-top: 0.25rem; }
-.change-positive { color: #059669; }
-.change-negative { color: #dc2626; }
-.change-neutral { color: #6b7280; }
-.net-positive { color: #059669; }
-.net-negative { color: #dc2626; }
-.net-neutral { color: #6b7280; }
-.projections-section { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; margin-bottom: 1.5rem; }
-.projections-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
-.projections-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.projection-card { padding: 1rem; background: #f9fafb; border-radius: 0.375rem; }
-.projection-label { font-size: 0.8125rem; font-weight: 500; color: #374151; display: block; margin-bottom: 0.5rem; }
-.projection-row { display: flex; gap: 0.75rem; font-size: 0.875rem; font-weight: 600; }
-.proj-in { color: #059669; }
-.proj-out { color: #dc2626; }
-.proj-net { font-weight: 700; }
-.chart-section { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; margin-bottom: 1.5rem; }
-.chart-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
-.daily-chart { display: flex; flex-direction: column; gap: 0.5rem; }
-.daily-bar { display: flex; align-items: center; gap: 1rem; padding: 0.375rem 0; border-bottom: 1px solid #f3f4f6; }
-.bar-label { font-size: 0.75rem; color: #6b7280; min-width: 3.5rem; }
-.bar-values { display: flex; gap: 1rem; font-size: 0.8125rem; }
-.bar-in { color: #059669; }
-.bar-out { color: #dc2626; }
-.bar-net { font-weight: 600; }
-.weekly-table { font-size: 0.8125rem; }
-.table-header { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #6b7280; font-size: 0.75rem; text-transform: uppercase; }
-.table-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.625rem 0; border-bottom: 1px solid #f3f4f6; align-items: center; }
-.val-in { color: #059669; font-weight: 500; }
-.val-out { color: #dc2626; font-weight: 500; }
-.categories-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.category-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; }
-.cat-name { font-weight: 500; font-size: 0.875rem; text-transform: capitalize; }
-.cat-total { font-weight: 700; font-size: 0.875rem; }
-.cat-count { font-size: 0.75rem; color: #6b7280; }
-.comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-.comp-item { text-align: center; }
-.comp-label { display: block; font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem; }
-.comp-value { font-size: 1.125rem; font-weight: 600; }
-.empty-state { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
-@media (max-width: 768px) { .comparison-grid { grid-template-columns: 1fr; } }
+.cashflow-page h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.period-selector {
+  display: flex;
+  gap: 0.25rem;
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+}
+.period-btn {
+  padding: 0.375rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+}
+.period-btn.active {
+  background: white;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.plan-gate {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+.plan-gate p {
+  margin-bottom: 1rem;
+  color: #374151;
+}
+.btn-upgrade {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  background: #111827;
+  color: white;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.kpi-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+.kpi-inflows {
+  border-left: 3px solid #10b981;
+}
+.kpi-outflows {
+  border-left: 3px solid #ef4444;
+}
+.kpi-net {
+  border-left: 3px solid #3b82f6;
+}
+.kpi-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+}
+.kpi-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+.kpi-change {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.change-positive {
+  color: #059669;
+}
+.change-negative {
+  color: #dc2626;
+}
+.change-neutral {
+  color: #6b7280;
+}
+.net-positive {
+  color: #059669;
+}
+.net-negative {
+  color: #dc2626;
+}
+.net-neutral {
+  color: #6b7280;
+}
+.projections-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.projections-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.projections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.projection-card {
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.375rem;
+}
+.projection-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.projection-row {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.proj-in {
+  color: #059669;
+}
+.proj-out {
+  color: #dc2626;
+}
+.proj-net {
+  font-weight: 700;
+}
+.chart-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.chart-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.daily-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.daily-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.bar-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  min-width: 3.5rem;
+}
+.bar-values {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8125rem;
+}
+.bar-in {
+  color: #059669;
+}
+.bar-out {
+  color: #dc2626;
+}
+.bar-net {
+  font-weight: 600;
+}
+.weekly-table {
+  font-size: 0.8125rem;
+}
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+}
+.val-in {
+  color: #059669;
+  font-weight: 500;
+}
+.val-out {
+  color: #dc2626;
+  font-weight: 500;
+}
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.375rem;
+}
+.cat-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+.cat-total {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.cat-count {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.comp-item {
+  text-align: center;
+}
+.comp-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+.comp-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+}
+@media (max-width: 768px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
