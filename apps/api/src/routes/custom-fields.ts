@@ -9,6 +9,7 @@ import { products } from "../db/schema/products.js";
 import { customers } from "../db/schema/customers.js";
 import { authMiddleware, tenantMiddleware } from "../middleware/auth.js";
 import { requirePlanFeature } from "../middleware/plan-gate.js";
+import { handleDbError } from "../utils/db-errors.js";
 
 export const customFieldRoutes = new Hono<AppEnv>();
 
@@ -141,16 +142,11 @@ customFieldRoutes.post("/definitions", zValidator("json", createFieldSchema), as
 
     return c.json({ data: field }, 201);
   } catch (err: unknown) {
-    // Handle unique constraint violation (duplicate field key)
-    if (err instanceof Error && err.message.includes("unique")) {
+    const dbErr = handleDbError(err);
+    if (dbErr) {
       return c.json(
-        {
-          error: {
-            message: `Ya existe un campo con la clave '${body.fieldKey}' para este tipo de entidad`,
-            status: 409,
-          },
-        },
-        409,
+        { error: { message: dbErr.message, status: dbErr.status, code: dbErr.code } },
+        dbErr.status,
       );
     }
     throw err;
