@@ -9,4 +9,5 @@ export * from "./inventory.js";
 export * from "./notifications.js";
 export * from "./billing.js";
 export * from "./erp.js";
+export * from "./custom-fields.js";
 export * from "./relations.js";

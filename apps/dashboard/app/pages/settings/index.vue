@@ -157,6 +157,10 @@ const catalogUrl = computed(() => {
           Metodos de pago &rarr;
           <span class="link-desc">Configura Pago Movil, Zelle y efectivo</span>
         </NuxtLink>
+        <NuxtLink to="/settings/custom-fields" class="settings-link">
+          Campos personalizados &rarr;
+          <span class="link-desc">Define campos extra para productos y clientes (Pro+)</span>
+        </NuxtLink>
       </section>
     </template>
   </div>
