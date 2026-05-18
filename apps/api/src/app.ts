@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { errorHandler } from "./middleware/error-handler.js";
 import { rateLimiter } from "./middleware/rate-limit.js";
 import { securityHeaders } from "./middleware/security-headers.js";
+import { structuredLogger } from "./middleware/structured-logger.js";
 import { healthRoutes } from "./routes/health.js";
 import { tenantRoutes } from "./routes/tenants.js";
 import { productRoutes } from "./routes/products.js";
@@ -45,7 +45,7 @@ export type AppEnv = {
 const app = new Hono<AppEnv>();
 
 // --- Global middleware ---
-app.use("*", logger());
+app.use("*", structuredLogger);
 app.use("*", securityHeaders);
 app.use("*", rateLimiter({ windowMs: 60_000, maxRequests: 100 }));
 
