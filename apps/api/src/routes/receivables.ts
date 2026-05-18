@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { eq, and, sql, count, isNotNull, lt } from "drizzle-orm";
+import { eq, and, sql, isNotNull, lt } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
-import { orders, payments } from "../db/schema/orders.js";
+import { orders } from "../db/schema/orders.js";
 import { authMiddleware, tenantMiddleware } from "../middleware/auth.js";
 
 export const receivablesRoutes = new Hono<AppEnv>();

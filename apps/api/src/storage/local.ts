@@ -8,8 +8,8 @@ import type { StorageAdapter } from "./types.js";
  * via a static file route in the API.
  */
 export class LocalStorageAdapter implements StorageAdapter {
-  private baseDir: string;
-  private baseUrl: string;
+  private readonly baseDir: string;
+  private readonly baseUrl: string;
 
   constructor(baseDir?: string, baseUrl?: string) {
     this.baseDir = baseDir || join(process.cwd(), ".uploads");

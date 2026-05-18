@@ -16,7 +16,7 @@
  */
 
 import { Queue, Worker } from "bullmq";
-import { eq, and, gte, lt, sql, count, desc } from "drizzle-orm";
+import { eq, and, gte, lt, sql, count } from "drizzle-orm";
 import { getRedisConnection } from "./redis.js";
 import { getDb } from "../db/index.js";
 import { orders } from "../db/schema/orders.js";
@@ -306,13 +306,15 @@ export function startDailyBriefingWorker(): void {
   });
 
   // Schedule daily at 8:00 AM UTC.
-  void _queue.add(
-    "briefing",
-    {},
-    {
-      repeat: { pattern: "0 8 * * *" },
-    },
-  );
+  _queue
+    .add(
+      "briefing",
+      {},
+      {
+        repeat: { pattern: "0 8 * * *" },
+      },
+    )
+    .catch(() => {});
 
   _worker = new Worker(
     QUEUE_NAME,

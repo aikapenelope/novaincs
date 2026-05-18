@@ -55,12 +55,14 @@ interface OcrResult {
 export function enqueuePaymentOcr(data: OcrJobData): boolean {
   if (!_queue) return false;
 
-  void _queue.add("ocr", data, {
-    removeOnComplete: { count: 50 },
-    removeOnFail: { count: 20 },
-    attempts: 2,
-    backoff: { type: "exponential", delay: 5000 },
-  });
+  _queue
+    .add("ocr", data, {
+      removeOnComplete: { count: 50 },
+      removeOnFail: { count: 20 },
+      attempts: 2,
+      backoff: { type: "exponential", delay: 5000 },
+    })
+    .catch(() => {});
 
   return true;
 }

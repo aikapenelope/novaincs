@@ -255,10 +255,10 @@ export function startRfmScoringWorker(): void {
   });
 
   // Schedule repeatable job every 6 hours.
-  void _queue.add("score", {}, { repeat: { every: 6 * 60 * 60 * 1000 } });
+  _queue.add("score", {}, { repeat: { every: 6 * 60 * 60 * 1000 } }).catch(() => {});
 
   // Run once on startup after a 60s delay.
-  void _queue.add("score-initial", {}, { delay: 60_000 });
+  _queue.add("score-initial", {}, { delay: 60_000 }).catch(() => {});
 
   _worker = new Worker(
     QUEUE_NAME,

@@ -8,6 +8,7 @@ Usage:
     uvicorn src.main:app --host 0.0.0.0 --port 8100
 """
 
+import os
 from typing import Any
 from pathlib import Path
 
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
+        host=os.environ.get("AGENTS_HOST", "0.0.0.0"),  # noqa: S104
         port=AGENTS_PORT,
         reload=False,
         log_level="info",

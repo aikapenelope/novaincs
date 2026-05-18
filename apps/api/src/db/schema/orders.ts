@@ -11,8 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants.js";
 import { customers } from "./customers.js";
-import { products } from "./products.js";
-import { productVariants } from "./products.js";
+import { products, productVariants } from "./products.js";
 
 /**
  * Orders — a customer purchase.

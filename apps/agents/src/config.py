@@ -53,10 +53,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # Database (PostgreSQL for production, SQLite fallback for dev)
 # ---------------------------------------------------------------------------
 
-_database_url = os.getenv(
-    "AGNO_DB_URL",
-    "postgresql+psycopg://agno:agno_dev@localhost:5433/agno",
-)
+_database_url = os.getenv("AGNO_DB_URL", "")
 
 if _database_url and _postgres_available and PostgresDb is not None:
     db = PostgresDb(db_url=_database_url)
@@ -76,22 +73,24 @@ else:
 
 _openrouter_api_key = get_required_env("OPENROUTER_API_KEY")
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 FAST_MODEL = OpenAIChat(
     id=os.getenv("NOVA_FAST_MODEL", "openai/gpt-4o-mini"),
     api_key=_openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    base_url=OPENROUTER_BASE_URL,
 )
 
 TOOL_MODEL = OpenAIChat(
     id=os.getenv("NOVA_TOOL_MODEL", "openai/gpt-4o-mini"),
     api_key=_openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    base_url=OPENROUTER_BASE_URL,
 )
 
 REASONING_MODEL = OpenAIChat(
     id=os.getenv("NOVA_REASONING_MODEL", "openai/gpt-5-mini"),
     api_key=_openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    base_url=OPENROUTER_BASE_URL,
 )
 
 # Groq for ultra-fast tasks (voice parsing, intent detection).

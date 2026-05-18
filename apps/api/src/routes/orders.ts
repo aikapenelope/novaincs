@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, sql, gt } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { getDb } from "../db/index.js";
 import { orders, orderItems, payments } from "../db/schema/orders.js";

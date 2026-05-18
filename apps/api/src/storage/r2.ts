@@ -12,9 +12,9 @@ import type { StorageAdapter } from "./types.js";
  * R2 has free egress, making it ideal for serving product images.
  */
 export class R2StorageAdapter implements StorageAdapter {
-  private client: S3Client;
-  private bucket: string;
-  private publicUrl: string;
+  private readonly client: S3Client;
+  private readonly bucket: string;
+  private readonly publicUrl: string;
 
   constructor() {
     const endpoint = process.env.R2_ENDPOINT;

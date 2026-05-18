@@ -2,4 +2,5 @@
 // Components will be added as the UI is built out.
 // This package is consumed by both dashboard and catalog apps.
 
-export {};
+// Placeholder export to satisfy TypeScript module requirements.
+export const UI_VERSION = "0.0.0";

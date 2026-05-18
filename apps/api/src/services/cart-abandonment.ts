@@ -18,7 +18,7 @@
  */
 
 import { Queue, Worker } from "bullmq";
-import { sql, and, eq, gte, lte, inArray } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { getRedisConnection } from "./redis.js";
 import { getDb } from "../db/index.js";
 import { customerEvents } from "../db/schema/customers.js";
@@ -163,7 +163,7 @@ export function startCartAbandonmentWorker(): void {
   });
 
   // Schedule repeatable job every 30 minutes.
-  void _queue.add("detect", {}, { repeat: { every: 30 * 60 * 1000 } });
+  _queue.add("detect", {}, { repeat: { every: 30 * 60 * 1000 } }).catch(() => {});
 
   _worker = new Worker(
     QUEUE_NAME,

@@ -18,7 +18,7 @@
  */
 
 import { Queue, Worker } from "bullmq";
-import { sql, and, eq, gte, lte, lt, desc, count, isNull } from "drizzle-orm";
+import { sql, and, eq, gte, lte, lt, count } from "drizzle-orm";
 import { getRedisConnection } from "./redis.js";
 import { getDb } from "../db/index.js";
 import { tenants } from "../db/schema/tenants.js";
@@ -310,7 +310,7 @@ export function startFeedGeneratorWorker(): void {
   });
 
   // Run every 30 minutes.
-  void _queue.add("generate", {}, { repeat: { every: 30 * 60 * 1000 } });
+  _queue.add("generate", {}, { repeat: { every: 30 * 60 * 1000 } }).catch(() => {});
 
   _worker = new Worker(
     QUEUE_NAME,
