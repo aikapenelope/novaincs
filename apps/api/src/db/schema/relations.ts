@@ -7,6 +7,7 @@ import { inventoryMovements } from "./inventory.js";
 import { feedItems, notifications } from "./notifications.js";
 import { planPayments } from "./billing.js";
 import { suppliers, expenses } from "./erp.js";
+import { customFieldDefinitions } from "./custom-fields.js";
 
 // --- Tenant relations ---
 
@@ -25,6 +26,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   planPayments: many(planPayments),
   suppliers: many(suppliers),
   expenses: many(expenses),
+  customFieldDefinitions: many(customFieldDefinitions),
 }));
 
 export const tenantMembersRelations = relations(tenantMembers, ({ one }) => ({
@@ -123,4 +125,10 @@ export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
 export const expensesRelations = relations(expenses, ({ one }) => ({
   tenant: one(tenants, { fields: [expenses.tenantId], references: [tenants.id] }),
   supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
+}));
+
+// --- Custom Fields relations ---
+
+export const customFieldDefinitionsRelations = relations(customFieldDefinitions, ({ one }) => ({
+  tenant: one(tenants, { fields: [customFieldDefinitions.tenantId], references: [tenants.id] }),
 }));
