@@ -6,6 +6,7 @@ import { orders, orderItems, payments } from "./orders.js";
 import { inventoryMovements } from "./inventory.js";
 import { feedItems, notifications } from "./notifications.js";
 import { planPayments } from "./billing.js";
+import { suppliers, expenses } from "./erp.js";
 
 // --- Tenant relations ---
 
@@ -22,6 +23,8 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   feedItems: many(feedItems),
   notifications: many(notifications),
   planPayments: many(planPayments),
+  suppliers: many(suppliers),
+  expenses: many(expenses),
 }));
 
 export const tenantMembersRelations = relations(tenantMembers, ({ one }) => ({
@@ -108,4 +111,16 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 export const planPaymentsRelations = relations(planPayments, ({ one }) => ({
   tenant: one(tenants, { fields: [planPayments.tenantId], references: [tenants.id] }),
+}));
+
+// --- ERP relations ---
+
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [suppliers.tenantId], references: [tenants.id] }),
+  expenses: many(expenses),
+}));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  tenant: one(tenants, { fields: [expenses.tenantId], references: [tenants.id] }),
+  supplier: one(suppliers, { fields: [expenses.supplierId], references: [suppliers.id] }),
 }));

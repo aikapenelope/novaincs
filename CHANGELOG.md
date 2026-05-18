@@ -4,6 +4,31 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Sprint 17 — May 2026
+
+**ERP-Lite: Expenses and Suppliers.** Merchants can now track expenses, manage suppliers, and see their real profit (Revenue - Expenses = Net Profit).
+
+### Expenses
+
+- **Expense CRUD** — `POST/GET/DELETE /expenses` with category, amount (USD + Bs), supplier link, payment method, receipt URL, invoice number.
+- **P&L Summary** — `GET /expenses/summary` calculates Revenue - Expenses = Net Profit with margin percentage and category breakdown.
+- **Categories** — `GET /expenses/categories` lists distinct categories with counts. Merchant-defined (inventory, rent, services, transport, marketing, etc.).
+- **Period filtering** — All queries support `days` parameter (1-365).
+
+### Suppliers
+
+- **Supplier CRUD** — `POST/GET/PATCH/DELETE /suppliers` with name, contact, phone, email, RIF, address, products supplied, notes.
+- **Search** — `GET /suppliers?search=` filters by name.
+- **Expense linking** — Expenses can reference a supplier via `supplierId`.
+
+### Database (Migration 0006)
+
+- `suppliers` table with RLS and tenant isolation
+- `expenses` table with RLS, indexes on tenant+date and tenant+category
+- Grants for qyne_app and qyne_readonly roles
+
+---
+
 ## Sprint 16 — May 2026
 
 **AI Agents: Sales, Content, and Support.** Three new agents join the Finance Agent in production. Merchants can now get sales suggestions, generate product copy, and ask questions about their business data.
