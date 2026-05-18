@@ -288,7 +288,7 @@ cashflowRoutes.get("/weekly", async (c) => {
   const inflowMap = new Map(weeklyInflows.map((r) => [r.week, r.total]));
   const outflowMap = new Map(weeklyOutflows.map((r) => [r.week, r.total]));
   const allWeeks = new Set([...inflowMap.keys(), ...outflowMap.keys()]);
-  const sortedWeeks = [...allWeeks].sort();
+  const sortedWeeks = [...allWeeks].sort((a, b) => a.localeCompare(b));
 
   const data = sortedWeeks.map((week) => {
     const inflow = parseFloat(inflowMap.get(week) ?? "0");
