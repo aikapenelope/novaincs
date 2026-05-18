@@ -23,9 +23,13 @@ MIGRATIONS_DIR="/app/apps/api/drizzle"
 if [ -n "$DATABASE_URL" ]; then
   echo "[entrypoint] Checking for pending migrations..."
 
-  MIGRATE_URL="${MIGRATION_DATABASE_URL:-$DATABASE_URL}"
+  export MIGRATE_URL="${MIGRATION_DATABASE_URL:-$DATABASE_URL}"
 
-  MIGRATE_URL="$MIGRATE_URL" node -e "
+  # Ensure node can find modules from both workspace root and api package.
+  export NODE_PATH="/app/node_modules:/app/apps/api/node_modules"
+
+  # Migration is non-fatal — if it fails, the API still starts.
+  node -e "
     const postgres = require('postgres');
     const sql = postgres(process.env.MIGRATE_URL, { max: 1 });
 
@@ -39,9 +43,6 @@ if [ -n "$DATABASE_URL" ]; then
       \`;
 
       // Check if this is a first run on an existing database.
-      // If the tracking table is empty but the 'tenants' table exists,
-      // the database was bootstrapped manually. Seed the tracker with
-      // all migrations that predate the auto-migration system.
       const applied = await sql\`SELECT filename FROM _migrations_applied\`;
       const appliedSet = new Set(applied.map(r => r.filename));
 
@@ -107,10 +108,9 @@ if [ -n "$DATABASE_URL" ]; then
 
     run().catch(err => {
       console.error('[entrypoint] Migration failed:', err.message);
-      // Don't exit — let the API start anyway so health checks can report the issue.
-      // The API will work for existing tables; new features may be degraded.
+      // Don't block startup — the API will work for existing tables.
     });
-  "
+  " || echo "[entrypoint] Migration script exited with error (non-fatal, continuing startup)."
 else
   echo "[entrypoint] DATABASE_URL not set, skipping migrations."
 fi
