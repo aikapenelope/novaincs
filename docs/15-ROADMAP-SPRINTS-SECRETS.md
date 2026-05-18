@@ -413,17 +413,18 @@ PHASE 2  ██ Sprint 10: Basic CRM + Behavioral tracking                    �
          ██ Sprint 12: Agno agents (Finance Agent, OCR, briefing)          ← DONE
          ██ Sprint 13: Smart feed + Notifications + Revenue attribution    ← DONE
          ██ Sprint 14: Google Sheets import + Financial dashboard          ← DONE
-         ██ Sprint 15: Email reports + Plan tiers + Billing
-                       → PAID LAUNCH (50-100 merchants, 3 plans)
+         ██ Sprint 15: Plan tiers + Owner Lock + Billing (no free tier)    ← DONE
+                       → PAID LAUNCH (Starter $8, Pro $15, Business $25)
 
-PHASE 3  ██ Sprint 16-17: WhatsApp Business API + Broadcasts
-         ██ Sprint 18-19: Sales + Content + Support Agents
-         ██ Sprint 20-21: ERP-lite (expenses, suppliers, custom fields)
+PHASE 3  ██ Sprint 16: AI Agents (Sales, Content, Support)                 ← DONE
+         ██ Sprint 17: ERP-Lite (Expenses, Suppliers, P&L)                 ← DONE
+         ██ Sprint 18: Custom fields + Cash flow dashboard
+         ██ Sprint 19: Public API + Webhooks
                        → GROWTH (500-1,000 merchants)
 
-PHASE 4  ██ Sprint 22-23: Wakit + WhatsApp bot
-         ██ Sprint 24-25: Public API + Webhooks + MCP Server
-         ██ Sprint 26-27: Meta Pixel + Voice + Multi-country
+PHASE 4  ██ Sprint 20-21: WhatsApp Business API + Broadcasts
+         ██ Sprint 22-23: Wakit + WhatsApp bot + AI autonomous
+         ██ Sprint 24-25: Meta Pixel + Voice + Multi-country
                        → PLATFORM (1,000+ merchants)
 ```
 
