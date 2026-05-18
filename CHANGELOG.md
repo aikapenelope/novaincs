@@ -4,6 +4,38 @@ All notable changes to the Qyne project are documented here.
 
 ---
 
+## Sprint 14 — May 2026
+
+**Financial Dashboard + Google Sheets Import.** Merchants can now see revenue trends, product margins, and export reports. Products can be imported from Google Sheets via service account.
+
+### Financial Dashboard
+
+- **Analytics page** (`/analytics`) — Revenue trends (AreaChart), weekly revenue (BarChart), top products table, payment method breakdown, and product margins with percentage.
+- **KPI cards** — Total revenue, order count, and average order value with period-over-period comparison.
+- **nuxt-charts** — Modern SVG charts (Unovis/Tremor-inspired) integrated as Nuxt module.
+- **Analytics API** — 5 endpoints: `GET /analytics/revenue`, `/products/top`, `/margins`, `/payment-methods`, `/summary`. All with configurable period (1-365 days) and previous-period comparison.
+
+### Google Sheets Import
+
+- **Service account auth** — No OAuth flow. Merchant shares their Google Sheet with Nova's service account email, pastes the URL, and imports.
+- **Import API** — `GET /import/google-sheets/config` (service account email + instructions), `POST /preview` (list sheets), `POST /read` (preview data), `POST /execute` (import with column mapping).
+- **Column mapping** — Merchant maps sheet columns to product fields (name, price, cost, stock, SKU, etc.). Validates and imports up to 2,000 rows.
+
+### Mass Price Update
+
+- **BCV recalculation** — `POST /products/recalculate-bs` updates all product Bs prices using the latest BCV exchange rate. Updates both products and variants.
+
+### PDF & CSV Export
+
+- **PDF report** — `GET /export/pdf` generates a sales report with pdfkit: store name, revenue summary, top products, payment method breakdown.
+- **CSV export** — `GET /export/excel` generates a UTF-8 CSV with BOM for Excel compatibility. All verified orders with buyer info, amounts, and dates.
+
+### Navigation
+
+- **Finanzas** link added to dashboard sidebar.
+
+---
+
 ## Sprint 13 — May 2026
 
 **Smart Feed + Notifications.** The dashboard now shows AI-generated action cards and real-time notifications so merchants never miss what matters.

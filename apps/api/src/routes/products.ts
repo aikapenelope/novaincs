@@ -522,3 +522,68 @@ productRoutes.delete("/:id/variants/:variantId", async (c) => {
 
   return c.json({ data: { id: result.id, deleted: true } });
 });
+
+// --- Mass price recalculation ---
+
+/**
+ * POST /products/recalculate-bs — Recalculate all Bs prices using the current BCV rate.
+ *
+ * For every product (and variant) that has a priceUsd, computes priceBs = priceUsd * rate.
+ * Uses the latest exchange rate from the exchange_rates table.
+ * Returns the number of products and variants updated.
+ */
+productRoutes.post("/recalculate-bs", async (c) => {
+  const tenantId = c.get("tenantId")!;
+  const db = getDb();
+
+  // Get the latest BCV rate.
+  const { exchangeRates } = await import("../db/schema/tenants.js");
+  const [latestRate] = await db
+    .select({ rate: exchangeRates.rate, effectiveAt: exchangeRates.effectiveAt })
+    .from(exchangeRates)
+    .orderBy(desc(exchangeRates.effectiveAt))
+    .limit(1);
+
+  if (!latestRate) {
+    return c.json(
+      {
+        error: {
+          message: "No hay tasa de cambio disponible. Espera a que se actualice.",
+          status: 404,
+        },
+      },
+      404,
+    );
+  }
+
+  const rate = parseFloat(latestRate.rate);
+
+  // Update all products with a priceUsd.
+  const updatedProducts = await db
+    .update(products)
+    .set({
+      priceBs: sql`ROUND(${products.priceUsd}::numeric * ${rate}, 2)::text`,
+    })
+    .where(and(eq(products.tenantId, tenantId), sql`${products.priceUsd} IS NOT NULL`))
+    .returning({ id: products.id });
+
+  // Update all variants with a priceUsd.
+  const updatedVariants = await db
+    .update(productVariants)
+    .set({
+      priceBs: sql`ROUND(${productVariants.priceUsd}::numeric * ${rate}, 2)::text`,
+    })
+    .where(
+      and(eq(productVariants.tenantId, tenantId), sql`${productVariants.priceUsd} IS NOT NULL`),
+    )
+    .returning({ id: productVariants.id });
+
+  return c.json({
+    data: {
+      rate: rate.toFixed(2),
+      rateDate: latestRate.effectiveAt,
+      productsUpdated: updatedProducts.length,
+      variantsUpdated: updatedVariants.length,
+    },
+  });
+});
