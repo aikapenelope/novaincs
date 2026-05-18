@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "../app.js";
 import { getStorage, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "../storage/index.js";

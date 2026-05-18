@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { tenants, tenantMembers, paymentConfigs, exchangeRates } from "./tenants.js";
+import { tenants, tenantMembers, paymentConfigs } from "./tenants.js";
 import { categories, products, productVariants } from "./products.js";
 import { customers, customerEvents } from "./customers.js";
 import { orders, orderItems, payments } from "./orders.js";

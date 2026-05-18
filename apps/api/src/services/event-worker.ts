@@ -40,10 +40,12 @@ export function enqueueEvent(event: BeaconEvent): boolean {
   if (!_queue) return false;
 
   // Fire-and-forget: don't await the queue add.
-  void _queue.add("event", event, {
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 50 },
-  });
+  _queue
+    .add("event", event, {
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 50 },
+    })
+    .catch(() => {});
 
   return true;
 }

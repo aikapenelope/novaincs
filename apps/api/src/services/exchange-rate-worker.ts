@@ -37,7 +37,7 @@ export function startExchangeRateWorker(): void {
   });
 
   // Schedule repeatable job every 15 minutes.
-  void _queue.add("refresh", {}, { repeat: { every: 15 * 60 * 1000 } });
+  _queue.add("refresh", {}, { repeat: { every: 15 * 60 * 1000 } }).catch(() => {});
 
   // Fetch immediately on startup (don't block server start).
   void fetchAndStoreRate();

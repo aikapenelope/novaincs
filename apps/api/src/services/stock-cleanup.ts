@@ -140,15 +140,17 @@ export function startStockCleanupWorker(): void {
   });
 
   // Add repeatable job (idempotent — BullMQ deduplicates by repeat key).
-  void _queue.add(
-    "cleanup",
-    {},
-    {
-      repeat: {
-        every: 15 * 60 * 1000, // 15 minutes
+  _queue
+    .add(
+      "cleanup",
+      {},
+      {
+        repeat: {
+          every: 15 * 60 * 1000, // 15 minutes
+        },
       },
-    },
-  );
+    )
+    .catch(() => {});
 
   _worker = new Worker(
     QUEUE_NAME,

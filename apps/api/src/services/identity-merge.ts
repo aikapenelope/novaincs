@@ -17,8 +17,7 @@
  * is available in the checkout context.
  */
 
-import { eq, and, sql, isNull } from "drizzle-orm";
-import { customers, customerEvents } from "../db/schema/customers.js";
+import { sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 
 type Db = PostgresJsDatabase<Record<string, unknown>>;
