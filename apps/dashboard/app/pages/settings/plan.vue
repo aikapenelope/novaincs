@@ -31,7 +31,7 @@ const submitting = ref(false);
 const submitSuccess = ref(false);
 
 const tierLabels: Record<string, string> = {
-  free: "Free",
+  expired: "Expirado",
   starter: "Starter",
   pro: "Pro",
   business: "Business",
@@ -86,8 +86,8 @@ function formatDate(iso: string): string {
         {{ tierLabels[plan.currentTier] || plan.currentTier }}
       </div>
       <p v-if="plan.expiresAt" class="plan-expires">Vence: {{ formatDate(plan.expiresAt) }}</p>
-      <p v-else-if="plan.currentTier === 'free'" class="plan-expires">
-        Plan gratuito (sin vencimiento)
+      <p v-else-if="plan.currentTier === 'expired'" class="plan-expires">
+        Tu prueba ha expirado. Elige un plan para continuar.
       </p>
     </div>
 
@@ -106,12 +106,12 @@ function formatDate(iso: string): string {
         </div>
         <p class="plan-desc">{{ tierDescriptions[tier] || "" }}</p>
         <button
-          v-if="tier !== 'free' && plan?.currentTier !== tier"
+          v-if="tier !== 'expired' && plan?.currentTier !== tier"
           class="upgrade-btn"
           @click="openUpgrade(tier)"
         >
           {{
-            plan?.currentTier === "free" || (plan?.prices?.[plan.currentTier] ?? 0) < price
+            plan?.currentTier === "expired" || (plan?.prices?.[plan.currentTier] ?? 0) < price
               ? "Upgrade"
               : "Cambiar"
           }}
@@ -194,7 +194,7 @@ function formatDate(iso: string): string {
   text-transform: uppercase;
 }
 
-.plan-badge.free {
+.plan-badge.expired {
   background: #f3f4f6;
   color: #6b7280;
 }

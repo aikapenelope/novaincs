@@ -34,7 +34,7 @@ export const tenants = pgTable(
     // Custom domain: "carlos-fashion.qyne.app" or "www.carlosfashion.com"
     domain: varchar("domain", { length: 255 }),
     // Plan
-    planTier: varchar("plan_tier", { length: 50 }).notNull().default("free"),
+    planTier: varchar("plan_tier", { length: 50 }).notNull().default("starter"),
     planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
     planOverrides: jsonb("plan_overrides").notNull().default({}),
     aiImagesUsed: integer("ai_images_used").notNull().default(0),

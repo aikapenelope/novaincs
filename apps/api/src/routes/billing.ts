@@ -44,14 +44,14 @@ billingRoutes.get("/plan", async (c) => {
     .limit(1);
 
   // Auto-downgrade check.
-  let effectiveTier = (tenant?.planTier ?? "free") as PlanTier;
-  if (effectiveTier !== "free" && tenant?.planExpiresAt) {
+  let effectiveTier = (tenant?.planTier ?? "expired") as PlanTier;
+  if (effectiveTier !== "expired" && tenant?.planExpiresAt) {
     if (Date.now() >= new Date(tenant.planExpiresAt).getTime()) {
       await db
         .update(tenants)
-        .set({ planTier: "free", planExpiresAt: null })
+        .set({ planTier: "expired", planExpiresAt: null })
         .where(eq(tenants.id, tenantId));
-      effectiveTier = "free";
+      effectiveTier = "expired";
     }
   }
 
@@ -65,7 +65,7 @@ billingRoutes.get("/plan", async (c) => {
   return c.json({
     data: {
       currentTier: effectiveTier,
-      expiresAt: effectiveTier !== "free" ? tenant?.planExpiresAt : null,
+      expiresAt: effectiveTier !== "expired" ? tenant?.planExpiresAt : null,
       aiImagesUsed: tenant?.aiImagesUsed ?? 0,
       prices: PLAN_PRICES,
       payments: recentPayments,
@@ -112,7 +112,7 @@ billingRoutes.post(
     "json",
     z.object({
       tenantId: z.string().uuid(),
-      tier: z.enum(["free", "starter", "pro", "business"]),
+      tier: z.enum(["expired", "starter", "pro", "business"]),
       daysActive: z.number().int().min(1).max(365).default(30),
       paymentId: z.string().uuid().optional(),
     }),
@@ -130,7 +130,7 @@ billingRoutes.post(
 
     // Calculate expiration.
     const expiresAt =
-      tier === "free" ? null : new Date(Date.now() + daysActive * 24 * 60 * 60 * 1000);
+      tier === "expired" ? null : new Date(Date.now() + daysActive * 24 * 60 * 60 * 1000);
 
     // Update tenant plan.
     await db
@@ -161,8 +161,8 @@ billingRoutes.post(
         expiresAt,
         daysActive,
         message:
-          tier === "free"
-            ? "Plan downgraded to free"
+          tier === "expired"
+            ? "Plan expired — account locked"
             : `Plan activated: ${tier} for ${daysActive} days`,
       },
     });
