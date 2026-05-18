@@ -17,18 +17,16 @@
  * bound prevents re-flagging old carts.
  */
 
-import { Queue, Worker } from "bullmq";
 import { and, eq, gte, lte } from "drizzle-orm";
-import { getRedisConnection } from "./redis.js";
 import { getDb } from "../db/index.js";
 import { customerEvents } from "../db/schema/customers.js";
+import { startCronWorker, stopCronWorker, type CronWorkerHandle } from "./worker-utils.js";
 
 const QUEUE_NAME = "cart-abandonment";
 const ABANDONMENT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 const MAX_LOOKBACK_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-let _queue: Queue | null = null;
-let _worker: Worker | null = null;
+let _handle: CronWorkerHandle | null = null;
 
 /**
  * Detect abandoned carts and create events.
@@ -148,51 +146,20 @@ export async function detectAbandonedCarts(): Promise<number> {
  * Runs every 30 minutes.
  */
 export function startCartAbandonmentWorker(): void {
-  const redis = getRedisConnection();
-  if (!redis) {
-    console.warn("[cart-abandonment] Redis unavailable, worker not started");
-    return;
-  }
-
-  _queue = new Queue(QUEUE_NAME, {
-    connection: redis,
-    defaultJobOptions: {
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  });
-
-  // Schedule repeatable job every 30 minutes.
-  _queue.add("detect", {}, { repeat: { every: 30 * 60 * 1000 } }).catch(() => {});
-
-  _worker = new Worker(
-    QUEUE_NAME,
-    async () => {
+  _handle = startCronWorker({
+    name: QUEUE_NAME,
+    jobName: "detect",
+    schedule: 30 * 60 * 1000,
+    processor: async () => {
       await detectAbandonedCarts();
     },
-    {
-      connection: redis,
-      concurrency: 1,
-    },
-  );
-
-  _worker.on("failed", (_job, err) => {
-    console.error(`[cart-abandonment] Job failed: ${err.message}`);
   });
-
-  console.log("[cart-abandonment] Worker started (every 30 min)");
 }
 
 /**
  * Gracefully shut down the cart abandonment worker.
  */
 export async function stopCartAbandonmentWorker(): Promise<void> {
-  if (_worker) {
-    await _worker.close();
-    _worker = null;
-  }
-  if (_queue) {
-    await _queue.close();
-    _queue = null;
-  }
+  await stopCronWorker(_handle);
+  _handle = null;
 }

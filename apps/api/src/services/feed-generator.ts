@@ -17,21 +17,19 @@
  *   - daily_summary: Yesterday's sales summary
  */
 
-import { Queue, Worker } from "bullmq";
 import { sql, and, eq, gte, lte, lt, count } from "drizzle-orm";
-import { getRedisConnection } from "./redis.js";
 import { getDb } from "../db/index.js";
 import { tenants } from "../db/schema/tenants.js";
 import { customers } from "../db/schema/customers.js";
 import { orders } from "../db/schema/orders.js";
 import { products } from "../db/schema/products.js";
 import { feedItems } from "../db/schema/notifications.js";
+import { startCronWorker, stopCronWorker, type CronWorkerHandle } from "./worker-utils.js";
 
 const QUEUE_NAME = "feed-generator";
 const LOW_STOCK_THRESHOLD = 5;
 
-let _queue: Queue | null = null;
-let _worker: Worker | null = null;
+let _handle: CronWorkerHandle | null = null;
 
 // --- Helper: today's date string for deduplication ---
 
@@ -295,48 +293,17 @@ export async function generateFeedItems(): Promise<number> {
 // --- Worker lifecycle ---
 
 export function startFeedGeneratorWorker(): void {
-  const redis = getRedisConnection();
-  if (!redis) {
-    console.warn("[feed-generator] Redis unavailable, worker not started");
-    return;
-  }
-
-  _queue = new Queue(QUEUE_NAME, {
-    connection: redis,
-    defaultJobOptions: {
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  });
-
-  // Run every 30 minutes.
-  _queue.add("generate", {}, { repeat: { every: 30 * 60 * 1000 } }).catch(() => {});
-
-  _worker = new Worker(
-    QUEUE_NAME,
-    async () => {
+  _handle = startCronWorker({
+    name: QUEUE_NAME,
+    jobName: "generate",
+    schedule: 30 * 60 * 1000,
+    processor: async () => {
       await generateFeedItems();
     },
-    {
-      connection: redis,
-      concurrency: 1,
-    },
-  );
-
-  _worker.on("failed", (_job, err) => {
-    console.error(`[feed-generator] Job failed: ${err.message}`);
   });
-
-  console.log("[feed-generator] Worker started (every 30 min)");
 }
 
 export async function stopFeedGeneratorWorker(): Promise<void> {
-  if (_worker) {
-    await _worker.close();
-    _worker = null;
-  }
-  if (_queue) {
-    await _queue.close();
-    _queue = null;
-  }
+  await stopCronWorker(_handle);
+  _handle = null;
 }
