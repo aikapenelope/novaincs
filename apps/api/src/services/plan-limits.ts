@@ -31,7 +31,7 @@ export function checkImageProcessingLimit(
   provider: ImageProvider,
 ): PlanCheckResult {
   const tier = planTier as keyof typeof PLAN_DEFAULTS;
-  const plan = PLAN_DEFAULTS[tier] ?? PLAN_DEFAULTS.free;
+  const plan = PLAN_DEFAULTS[tier] ?? PLAN_DEFAULTS.expired;
 
   // Bria (premium) is only available on Pro and Business plans.
   if (provider === "fal-bria" && tier !== "pro" && tier !== "business") {

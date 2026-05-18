@@ -1,9 +1,16 @@
 // Application-wide constants.
 
-/** Default plan configuration per tier. */
+/**
+ * Plan configuration per tier.
+ *
+ * There is NO free tier. New merchants get a 7-day Starter trial.
+ * After the trial expires, the account is locked until they pay.
+ * The "expired" state uses the starter config with all features disabled.
+ */
 export const PLAN_DEFAULTS = {
-  free: {
-    tier: "free" as const,
+  /** Expired/locked state — trial ended, no active subscription. */
+  expired: {
+    tier: "expired" as const,
     features: {
       smart_feed: false,
       reports: false,
@@ -20,8 +27,8 @@ export const PLAN_DEFAULTS = {
       google_sheets_import: false,
     },
     limits: {
-      ai_images_per_month: 10,
-      products: 20,
+      ai_images_per_month: 0,
+      products: 0,
       whatsapp_broadcasts_per_month: 0,
     },
   },
@@ -100,15 +107,21 @@ export const PLAN_DEFAULTS = {
 export type PlanTier = keyof typeof PLAN_DEFAULTS;
 
 /** Feature name type. */
-export type PlanFeature = keyof (typeof PLAN_DEFAULTS)["free"]["features"];
+export type PlanFeature = keyof (typeof PLAN_DEFAULTS)["expired"]["features"];
 
-/** Plan pricing in USD. */
+/** Plan pricing in USD/month. */
 export const PLAN_PRICES: Record<PlanTier, number> = {
-  free: 0,
+  expired: 0,
   starter: 8,
   pro: 15,
   business: 25,
 };
+
+/** Trial duration for new accounts (days). */
+export const TRIAL_DAYS = 7;
+
+/** Default tier for new accounts. */
+export const DEFAULT_TIER: PlanTier = "starter";
 
 /** RFM segment thresholds (defaults, calibrated per-merchant after 30 days). */
 export const RFM_SEGMENTS = {
