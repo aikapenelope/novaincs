@@ -155,6 +155,9 @@ onUnmounted(() => {
           <NuxtLink to="/analytics" class="nav-link">Finanzas</NuxtLink>
         </li>
         <li>
+          <NuxtLink to="/cashflow" class="nav-link">Flujo de Caja</NuxtLink>
+        </li>
+        <li>
           <NuxtLink to="/settings" class="nav-link">Configuracion</NuxtLink>
         </li>
       </ul>
