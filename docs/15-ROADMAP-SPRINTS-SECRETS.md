@@ -402,19 +402,17 @@ DONE     ██ Sprint 5: CI/CD + Production deploy (Coolify + Traefik + auto-de
          ██ Security hardening: SSH, fail2ban, CORS, rate limiting, RLS enforcement
          ██ Dokploy → Coolify migration + Tailscale VPN
 
-PHASE 1  ██ Sprint 6:  AI images (fal.ai) + Inventory adjustments  ← DONE (code exists)
-           Remaining:  BCV dual pricing (ve.dolarapi.com)
-         ██ Sprint 7:  Checkout + Orders + Payments  ← PARTIALLY DONE (routes exist)
-           Remaining:  Cart (frontend), stock reservation, WhatsApp deep links
-         ██ Sprint 8:  Orders dashboard + WhatsApp deep links
-         ██ Sprint 9:  Onboarding + Excel import + Polish
+PHASE 1  ██ Sprint 6:  AI images (fal.ai) + BCV dual pricing              ← DONE
+         ██ Sprint 7:  Cart + Checkout + WhatsApp deep link                ← DONE
+         ██ Sprint 8:  Orders dashboard + Payment verification             ← DONE
+         ██ Sprint 9:  Onboarding + Excel import + Full-text search + SEO  ← DONE
                        → BETA LAUNCH (10-20 merchants)
 
-PHASE 2  ██ Sprint 10: Basic CRM + Behavioral tracking
-         ██ Sprint 11: RFM scoring + Auto-segments
-         ██ Sprint 12: Agno agents (Finance Agent, OCR, briefing)
-         ██ Sprint 13: Smart feed + Notifications + Revenue attribution
-         ██ Sprint 14: Google Sheets import + Financial dashboard
+PHASE 2  ██ Sprint 10: Basic CRM + Behavioral tracking                    ← DONE
+         ██ Sprint 11: RFM scoring + Auto-segments                         ← DONE
+         ██ Sprint 12: Agno agents (Finance Agent, OCR, briefing)          ← DONE
+         ██ Sprint 13: Smart feed + Notifications + Revenue attribution    ← DONE
+         ██ Sprint 14: Google Sheets import + Financial dashboard          ← DONE
          ██ Sprint 15: Email reports + Plan tiers + Billing
                        → PAID LAUNCH (50-100 merchants, 3 plans)
 

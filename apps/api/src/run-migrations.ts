@@ -23,7 +23,11 @@
 
 import postgres from "postgres";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const MIGRATIONS_DIR = join(__dirname, "..", "drizzle");
 const CONNECT_TIMEOUT_MS = 15_000;
