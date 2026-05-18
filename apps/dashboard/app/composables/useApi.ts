@@ -53,6 +53,16 @@ export function useApi() {
     return response.data;
   }
 
+  async function put<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const headers = await getHeaders();
+    const response = await $fetch<{ data: T }>(`${apiUrl}${path}`, {
+      method: "PUT",
+      headers,
+      body,
+    });
+    return response.data;
+  }
+
   async function del<T>(path: string): Promise<T> {
     const headers = await getHeaders();
     const response = await $fetch<{ data: T }>(`${apiUrl}${path}`, {
@@ -101,5 +111,5 @@ export function useApi() {
     }
   }
 
-  return { get, post, patch, del, upload, apiUrl, tenantId, resolveTenant };
+  return { get, post, patch, put, del, upload, apiUrl, tenantId, resolveTenant };
 }
