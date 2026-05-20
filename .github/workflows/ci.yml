@@ -56,3 +56,43 @@ jobs:
 
       - name: Run tests
         run: pnpm --filter @qyne/api exec vitest run
+
+  agents-validation:
+    name: Agents — Typecheck & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agent dependencies
+        working-directory: apps/agents
+        run: |
+          pip install --quiet -e ".[dev]"
+
+      - name: Typecheck agents (pyright)
+        working-directory: apps/agents
+        run: pyright src/
+
+      - name: Lint agents (ruff)
+        working-directory: apps/agents
+        run: |
+          ruff check src/
+          ruff format --check src/
+
+  # This job gates Coolify auto-deploy. Coolify's "Wait for CI" feature
+  # checks that all required status checks pass before deploying.
+  deploy-gate:
+    name: Deploy Gate
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck-test, agents-validation]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: All checks passed
+        run: echo "All CI checks passed. Coolify can proceed with deployment."

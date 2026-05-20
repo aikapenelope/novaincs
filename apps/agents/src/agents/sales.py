@@ -18,6 +18,14 @@ from typing import Any
 
 from ..config import TOOL_MODEL, db, knowledge_base
 from ..shared import guardrails, learning_full, compression
+from ..tools.customers import (
+    get_at_risk_customers,
+    get_customer_details,
+    get_top_customers,
+    list_customers,
+)
+from ..tools.orders import list_orders
+from ..tools.products import list_products, search_low_stock_products
 
 SALES_AGENT_INSTRUCTIONS = [
     "You are the Sales Agent for Nova, a commercial SaaS for Venezuelan merchants.",
@@ -68,7 +76,15 @@ def create_sales_agent(agent_db: Any = None) -> Agent:
         "name": "Sales Agent",
         "role": "Sales strategist — detects opportunities and suggests actions",
         "model": TOOL_MODEL,
-        "tools": [],
+        "tools": [
+            list_customers,
+            get_customer_details,
+            get_at_risk_customers,
+            get_top_customers,
+            list_orders,
+            list_products,
+            search_low_stock_products,
+        ],
         "instructions": SALES_AGENT_INSTRUCTIONS,
         "db": _db,
         "add_history_to_context": True,
