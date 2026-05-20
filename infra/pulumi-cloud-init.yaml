@@ -1,0 +1,61 @@
+# Nova — Cloud-init template for Pulumi (qyne-infra repo)
+#
+# This is the cloud-init that should be used in the Pulumi index.ts
+# to replace the current Coolify-based cloud-init.
+#
+# Copy this content into the `cloudInit` variable in qyne-infra/index.ts
+# to make `pulumi up` create a fully self-deploying server.
+#
+# Required Pulumi config:
+#   pulumi config set --secret ghcrUser <github-username>
+#   pulumi config set --secret ghcrToken <github-pat-with-packages-read>
+#   pulumi config set domainApi api.martes.app
+#   pulumi config set domainDashboard app.martes.app
+
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - jq
+  - git
+  - unattended-upgrades
+  - fail2ban
+  - openssl
+
+runcmd:
+  # Create Nova data directories
+  - mkdir -p /var/lib/nova/pg-nova
+  - mkdir -p /var/lib/nova/pg-agno
+  - mkdir -p /var/lib/nova/backups
+
+  # Configure fail2ban
+  - |
+    cat > /etc/fail2ban/jail.local << 'EOF'
+    [sshd]
+    enabled = true
+    port = ssh
+    filter = sshd
+    maxretry = 5
+    bantime = 3600
+    findtime = 600
+    EOF
+  - systemctl enable fail2ban
+  - systemctl restart fail2ban
+
+  # Install Docker
+  - curl -fsSL https://get.docker.com | sh
+
+  # Install Tailscale
+  - curl -fsSL https://tailscale.com/install.sh | sh
+
+  # Clone the repo
+  - git clone https://github.com/aikapenelope/novaincs.git /opt/nova
+
+  # Authenticate with GHCR
+  # (GHCR_USER and GHCR_TOKEN are injected via Pulumi config → cloud-init)
+  - echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+
+  # The .env file should be pre-populated via Pulumi ESC or injected here.
+  # If not, the bootstrap script will generate random DB passwords.
+  - cd /opt/nova && bash infra/bootstrap-standalone.sh

@@ -19,6 +19,27 @@ from typing import Any
 
 from ..config import TOOL_MODEL, db, knowledge_base
 from ..shared import guardrails, learning_full, compression
+from ..tools.customers import (
+    get_at_risk_customers,
+    get_customer_details,
+    get_top_customers,
+    list_customers,
+)
+from ..tools.finance import (
+    get_cashflow,
+    get_daily_stats,
+    get_exchange_rate,
+    get_expenses,
+    get_receivables,
+    get_revenue_summary,
+    get_top_products,
+)
+from ..tools.orders import get_order_details, get_pending_payments, list_orders
+from ..tools.products import (
+    get_product_details,
+    list_products,
+    search_low_stock_products,
+)
 
 SUPPORT_AGENT_INSTRUCTIONS = [
     "You are the Support Agent for Nova, a commercial SaaS for Venezuelan merchants.",
@@ -74,7 +95,29 @@ def create_support_agent(agent_db: Any = None) -> Agent:
         "name": "Support Agent",
         "role": "Business assistant — answers questions about merchant data",
         "model": TOOL_MODEL,
-        "tools": [],
+        "tools": [
+            # Products
+            list_products,
+            get_product_details,
+            search_low_stock_products,
+            # Orders
+            list_orders,
+            get_order_details,
+            get_pending_payments,
+            # Customers
+            list_customers,
+            get_customer_details,
+            get_at_risk_customers,
+            get_top_customers,
+            # Finance
+            get_revenue_summary,
+            get_top_products,
+            get_receivables,
+            get_daily_stats,
+            get_expenses,
+            get_cashflow,
+            get_exchange_rate,
+        ],
         "instructions": SUPPORT_AGENT_INSTRUCTIONS,
         "db": _db,
         "add_history_to_context": True,

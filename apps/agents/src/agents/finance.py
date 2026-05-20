@@ -23,6 +23,16 @@ from ..config import (
     knowledge_base,
 )
 from ..shared import guardrails, learning_full, compression
+from ..tools.finance import (
+    get_cashflow,
+    get_daily_stats,
+    get_exchange_rate,
+    get_expenses,
+    get_receivables,
+    get_revenue_summary,
+    get_top_products,
+)
+from ..tools.orders import get_pending_payments, list_orders, update_order_status
 
 FINANCE_AGENT_INSTRUCTIONS = [
     "You are the Finance Agent for Nova, a commercial SaaS for Venezuelan merchants.",
@@ -90,8 +100,20 @@ def create_finance_agent(agent_db: Any = None) -> Agent:
         "name": "Finance Agent",
         "role": "Financial analyst and payment verifier for Nova merchants",
         "model": TOOL_MODEL,
-        "tools": [verify_payment_screenshot],
-        "tool_call_limit": 5,
+        "tools": [
+            verify_payment_screenshot,
+            get_revenue_summary,
+            get_top_products,
+            get_receivables,
+            get_daily_stats,
+            get_expenses,
+            get_cashflow,
+            get_exchange_rate,
+            get_pending_payments,
+            list_orders,
+            update_order_status,
+        ],
+        "tool_call_limit": 8,
         "retries": 2,
         "instructions": FINANCE_AGENT_INSTRUCTIONS,
         "db": _db,

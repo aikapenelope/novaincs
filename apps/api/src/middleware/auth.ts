@@ -27,9 +27,37 @@ function getClerkSecretKey(): string {
 
 /**
  * Auth middleware — protects routes that require authentication.
+ * Supports two auth paths:
+ *   1. Clerk JWT (external clients: dashboard, catalog)
+ *   2. Internal service token (nova-agents calling back to query data)
+ *
+ * Internal service auth is detected by the X-Internal-Service header.
+ * When present, validates NOVA_INTERNAL_SECRET instead of Clerk JWT.
+ *
  * Sets `c.get("userId")` on success.
  */
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
+  const internalService = c.req.header("X-Internal-Service");
+
+  // Internal service path: validate shared secret.
+  if (internalService) {
+    const authHeader = c.req.header("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const secret = process.env.NOVA_INTERNAL_SECRET;
+
+    if (!secret) {
+      throw new HTTPException(503, { message: "Internal auth not configured" });
+    }
+    if (token !== secret) {
+      throw new HTTPException(401, { message: "Invalid internal service token" });
+    }
+
+    c.set("userId", `internal:${internalService}`);
+    await next();
+    return;
+  }
+
+  // External path: Clerk JWT verification.
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     throw new HTTPException(401, { message: "Missing or invalid Authorization header" });
@@ -79,16 +107,28 @@ export const tenantMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     throw new HTTPException(400, { message: "X-Tenant-Id header is required" });
   }
 
-  // Validate that this user is actually a member of the requested tenant.
   const db = getDb();
-  const [membership] = await db
-    .select({ role: tenantMembers.role })
-    .from(tenantMembers)
-    .where(and(eq(tenantMembers.tenantId, tenantId), eq(tenantMembers.userId, userId)))
-    .limit(1);
 
-  if (!membership) {
-    throw new HTTPException(403, { message: "Not a member of this tenant" });
+  // Internal services are trusted — skip membership validation.
+  // They already authenticated via NOVA_INTERNAL_SECRET.
+  const isInternal = userId.startsWith("internal:");
+
+  if (!isInternal) {
+    // Validate that this user is actually a member of the requested tenant.
+    const [membership] = await db
+      .select({ role: tenantMembers.role })
+      .from(tenantMembers)
+      .where(and(eq(tenantMembers.tenantId, tenantId), eq(tenantMembers.userId, userId)))
+      .limit(1);
+
+    if (!membership) {
+      throw new HTTPException(403, { message: "Not a member of this tenant" });
+    }
+
+    c.set("memberRole", membership.role);
+  } else {
+    // Internal services get owner-level access.
+    c.set("memberRole", "owner");
   }
 
   // Set RLS context so all subsequent queries are scoped to this tenant.
@@ -98,7 +138,6 @@ export const tenantMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   await setTenantContext(db, tenantId);
 
   c.set("tenantId", tenantId);
-  c.set("memberRole", membership.role);
 
   try {
     await next();

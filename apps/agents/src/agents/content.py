@@ -16,8 +16,9 @@ Capabilities:
 from agno.agent import Agent
 from typing import Any
 
-from ..config import TOOL_MODEL, FAST_MODEL, db, knowledge_base
+from ..config import TOOL_MODEL, db, knowledge_base
 from ..shared import guardrails, learning_full, compression
+from ..tools.products import get_product_details, list_products
 
 CONTENT_AGENT_INSTRUCTIONS = [
     "You are the Content Agent for Nova, a commercial SaaS for Venezuelan merchants.",
@@ -83,7 +84,7 @@ def create_content_agent(agent_db: Any = None) -> Agent:
         "name": "Content Agent",
         "role": "Copywriter — generates product descriptions and marketing copy",
         "model": TOOL_MODEL,
-        "tools": [],
+        "tools": [list_products, get_product_details],
         "instructions": CONTENT_AGENT_INSTRUCTIONS,
         "db": _db,
         "add_history_to_context": True,

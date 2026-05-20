@@ -1,0 +1,426 @@
+# Nova — Production Stack (Self-Contained)
+#
+# Deploys the ENTIRE system: databases + cache + apps + agents + reverse proxy.
+# No Coolify, no PaaS, no external dependencies beyond Docker.
+#
+# Usage:
+#   cp infra/.env.example .env   # Fill in secrets
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Auto-update:
+#   Watchtower monitors GHCR for new images and restarts containers automatically.
+#   Push to main → GitHub Actions builds → GHCR → Watchtower pulls → zero-downtime restart.
+#
+# Requirements:
+#   - Docker 24+ with Compose V2
+#   - .env file with all secrets (see infra/.env.example)
+#   - Ports 80, 443 open
+#   - DNS A records pointing to this server
+
+services:
+  # ==========================================================================
+  # REVERSE PROXY (Traefik)
+  # ==========================================================================
+
+  traefik:
+    image: traefik:v3.4
+    container_name: nova-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=nova-public"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=WARN"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/letsencrypt
+      - ./infra/traefik-dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - nova-public
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ==========================================================================
+  # DATABASES
+  # ==========================================================================
+
+  pg-nova:
+    image: pgvector/pgvector:0.8.2-pg16
+    container_name: pg-nova
+    restart: unless-stopped
+    ports: ["127.0.0.1:5432:5432"]
+    environment:
+      POSTGRES_USER: nova
+      POSTGRES_PASSWORD: ${PG_NOVA_PASSWORD}
+      POSTGRES_DB: nova
+    volumes:
+      - /var/lib/nova/pg-nova:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c" 
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=1536MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "log_min_duration_statement=1000"
+      - "-c"
+      - "log_statement=ddl"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nova"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pg-agno:
+    image: agnohq/pgvector:16
+    container_name: pg-agno
+    restart: unless-stopped
+    ports: ["127.0.0.1:5433:5432"]
+    environment:
+      POSTGRES_USER: agno
+      POSTGRES_PASSWORD: ${PG_AGNO_PASSWORD}
+      POSTGRES_DB: agno
+    volumes:
+      - /var/lib/nova/pg-agno:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "log_min_duration_statement=1000"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agno"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pg-prefect:
+    image: postgres:16-alpine
+    container_name: pg-prefect
+    restart: unless-stopped
+    ports: ["127.0.0.1:5434:5432"]
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: ${PG_PREFECT_PASSWORD}
+      POSTGRES_DB: prefect
+    volumes:
+      - prefect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
+  # CACHE & QUEUES
+  # ==========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: nova-redis
+    restart: unless-stopped
+    ports: ["127.0.0.1:6379:6379"]
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 384mb
+      --maxmemory-policy noeviction
+      --databases 4
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
+  # WORKFLOW ENGINE
+  # ==========================================================================
+
+  prefect:
+    image: prefecthq/prefect:3.6.29-python3.12
+    container_name: nova-prefect
+    restart: unless-stopped
+    ports: ["127.0.0.1:4200:4200"]
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:${PG_PREFECT_PASSWORD}@pg-prefect:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_API_URL: http://localhost:4200/api
+    depends_on:
+      pg-prefect: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
+  # APPLICATION SERVICES
+  # ==========================================================================
+
+  api:
+    image: ghcr.io/aikapenelope/novaincs-api:latest
+    container_name: nova-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://qyne_app:${PG_NOVA_APP_PASSWORD}@pg-nova:5432/nova
+      MIGRATION_DATABASE_URL: postgresql://nova:${PG_NOVA_PASSWORD}@pg-nova:5432/nova
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      CORS_ORIGINS: https://${DOMAIN_DASHBOARD},https://${DOMAIN_CATALOG:-catalog.example.com}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_BUCKET: ${R2_BUCKET:-qyne-images}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL}
+      FAL_KEY: ${FAL_KEY}
+      NOVA_INTERNAL_SECRET: ${NOVA_INTERNAL_SECRET}
+      NOVA_AGENTS_URL: http://agents:8100
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      pg-nova: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN_API}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
+      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - nova-internal
+      - nova-public
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard:
+    image: ghcr.io/aikapenelope/novaincs-dashboard:latest
+    container_name: nova-dashboard
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_URL: https://${DOMAIN_API}
+      NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      NUXT_CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      NODE_ENV: production
+      PORT: "3001"
+      NUXT_HOST: "0.0.0.0"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${DOMAIN_DASHBOARD}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=3001"
+      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - nova-public
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  agents:
+    image: ghcr.io/aikapenelope/novaincs-agents:latest
+    container_name: nova-agents
+    restart: unless-stopped
+    environment:
+      AGNO_DB_URL: postgresql+psycopg://agno:${PG_AGNO_PASSWORD}@pg-agno:5432/agno
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      NOVA_API_URL: http://api:3000
+      NOVA_INTERNAL_SECRET: ${NOVA_INTERNAL_SECRET}
+      AGENTS_PORT: "8100"
+      AGNO_TELEMETRY: "false"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      pg-agno: { condition: service_healthy }
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8100/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
+  # AUTO-UPDATE (Watchtower)
+  # ==========================================================================
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: nova-watchtower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_ROLLING_RESTART: "true"
+      WATCHTOWER_NOTIFICATIONS: "shoutrrr"
+      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - nova-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# ==========================================================================
+# VOLUMES
+# ==========================================================================
+
+volumes:
+  traefik_certs:
+  prefect_pgdata:
+  redis_data:
+
+# ==========================================================================
+# NETWORKS
+# ==========================================================================
+
+networks:
+  nova-internal:
+    name: nova-internal
+    driver: bridge
+  nova-public:
+    name: nova-public
+    driver: bridge

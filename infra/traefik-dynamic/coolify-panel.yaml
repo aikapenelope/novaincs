@@ -1,22 +1,2 @@
-# Coolify panel route - deploy.martes.app
-# NOTE: Panel is also accessible via Tailscale at http://<tailscale-ip>:8000
-# which bypasses Traefik entirely. Prefer Tailscale for admin access.
-http:
-  routers:
-    coolify-panel-http:
-      rule: "Host(`deploy.martes.app`)"
-      entryPoints:
-        - http
-      service: coolify-panel
-    coolify-panel-https:
-      rule: "Host(`deploy.martes.app`)"
-      entryPoints:
-        - https
-      service: coolify-panel
-      tls:
-        certResolver: letsencrypt
-  services:
-    coolify-panel:
-      loadBalancer:
-        servers:
-          - url: "http://coolify:8080"
+# This file is no longer needed in standalone mode (no Coolify).
+# Kept as placeholder. Delete if not using Coolify.
