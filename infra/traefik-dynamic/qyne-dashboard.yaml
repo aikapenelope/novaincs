@@ -1,14 +1,15 @@
+# Nova Dashboard — Traefik routing (fallback for non-Docker-label setups)
 http:
   routers:
     qyne-dashboard-http:
       rule: "Host(`app.martes.app`)"
       entryPoints:
-        - http
+        - web
       service: qyne-dashboard
     qyne-dashboard-https:
       rule: "Host(`app.martes.app`)"
       entryPoints:
-        - https
+        - websecure
       service: qyne-dashboard
       tls:
         certResolver: letsencrypt
@@ -16,4 +17,4 @@ http:
     qyne-dashboard:
       loadBalancer:
         servers:
-          - url: "http://ncsviwrk3w036ged275diea1:3001"
+          - url: "http://nova-dashboard:3001"

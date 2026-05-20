@@ -1,14 +1,17 @@
+# Nova API — Traefik routing (fallback for non-Docker-label setups)
+# With docker-compose.prod.yml, Traefik uses Docker labels directly.
+# This file is a fallback for manual setups or when Docker provider is disabled.
 http:
   routers:
     qyne-api-http:
       rule: "Host(`api.martes.app`)"
       entryPoints:
-        - http
+        - web
       service: qyne-api
     qyne-api-https:
       rule: "Host(`api.martes.app`)"
       entryPoints:
-        - https
+        - websecure
       service: qyne-api
       tls:
         certResolver: letsencrypt
@@ -16,4 +19,4 @@ http:
     qyne-api:
       loadBalancer:
         servers:
-          - url: "http://re6fk4dx8qum7w9v7zh2qer5:3000"
+          - url: "http://nova-api:3000"
